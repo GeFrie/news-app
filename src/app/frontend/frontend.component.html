@@ -1,0 +1,12 @@
+@for(v of convert.getArray(itemCountV); track $index){
+  <div nz-row [nzAlign]="'middle'" [style.height.%]="100 / itemCountV">
+    @for(h of convert.getArray(itemCountH); track $index){
+      <div nz-col [nzSpan]="24 / itemCountH" [style.height.%]="100">
+        <!-- <div [class]="['box', h === 0 ? 'left' : '']"> -->
+        <div [class]="['box']">
+          Zeile {{v}}, Spalte {{h}}
+        </div>
+      </div>
+    }
+  </div>
+}

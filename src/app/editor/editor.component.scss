@@ -1,0 +1,31 @@
+.message-preview {
+    border: 1px dashed #9ca3af;
+    z-index: 10;
+}
+
+.placeholder {
+    //   color: #9ca3af;
+    font-style: italic;
+    padding: 0.5rem 0;
+    //   text-shadow: 0 0 2px rgba(255, 255, 255, 0.1);
+
+    // /* Basis-Farbe */
+    //  color: white;
+    // /* Invertiert die Farbe zum Hintergrund */
+    // mix-blend-mode: difference;
+    // /* Damit es bei der Invertierung besser lesbar bleibt */
+    font-weight: bold;
+
+    text-align: center;
+    display: inline-block;
+    // padding: 2px 8px;
+    border-radius: 4px;
+
+    /* Semi-transparentes Weiß/Schwarz mit Unschärfe (Glassmorphism) */
+    background: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(8px);
+
+    /* Textfarbe passt sich dem Kontrast an */
+    color: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}

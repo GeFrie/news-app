@@ -1,0 +1,112 @@
+<div>
+    @if (type === 'text') {
+    <div class="editor">
+        <ngx-editor-menu [editor]="editor" [toolbar]="toolbar"></ngx-editor-menu>
+        <ngx-editor [editor]="editor" [(ngModel)]="editorText" (ngModelChange)="onTextChange($event)"
+            [placeholder]="'Text hier eingeben...'"></ngx-editor>
+        <h5 class="html-header">HTML Ausgabe</h5>
+        <div class="html"> {{editorText}} </div>
+    </div>
+    }
+    @if (type === 'file') {
+    <nz-upload nzType="drag" [nzMultiple]="false" [(nzFileList)]="fileList" [nzBeforeUpload]="beforeUpload"
+        [nzRemove]="handleRemove" nzAccept="image/*,.pdf">
+        <p class="ant-upload-drag-icon"><i nz-icon nzType="inbox"></i></p>
+        <p class="ant-upload-text">Klicken oder Datei hierher ziehen</p>
+        <p class="ant-upload-hint">maximale Datei-Größe: {{MAX_FILE_SIZE_MB}}MB</p>
+    </nz-upload>
+
+    @if (previewUrl) {
+    <div style="margin-top: 15px; text-align: center;">
+        <img [src]="previewUrl" style="max-height: 200px; border: 1px solid #eee;">
+    </div>
+    }
+    }
+
+    @if (type === 'color') {
+    <div class="color-picker-container">
+        <nz-space nzDirection="horizontal">
+            <nz-space *nzSpaceItem nzDirection="vertical">
+                <div *nzSpaceItem class="preview-label">Hintergrund-Farbe</div>
+                <div *nzSpaceItem class="preview-box" [style.background]="selectedColor"></div>
+
+                <nz-select *nzSpaceItem nzShowSearch nzAllowClear nzAllowAddTag
+                    nzPlaceHolder="#Hex-Code eingeben oder Webfarbe wählen..." [(ngModel)]="selectedColor"
+                    (ngModelChange)="onWebColorSelect($event)"
+                    style="width: 275px; margin-top: 8px; margin-bottom: -12px;">
+
+                    <!-- @for (color of webColors; track color.name) {
+                    <nz-option nzCustomContent [nzLabel]="color.name" [nzValue]="color.hex">
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <div [style.backgroundColor]="color.hex" 
+                             style="width: 16px; height: 16px; border-radius: 2px; border: 1px solid #ddd;">
+                        </div>
+                        <span>{{ color.name }}</span>
+                        <span style="color: #999; font-size: 11px; margin-left: auto;">{{ color.hex }}</span>
+                      </div>
+                    </nz-option>
+                  } -->
+                    @for (group of colorGroups; track group.label) {
+                    <nz-option-group [nzLabel]="group.label">
+                        @for (color of group.colors; track color.name) {
+                        <nz-option nzCustomContent [nzLabel]="color.name" [nzValue]="color.hex">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <div [style.backgroundColor]="color.hex"
+                                    style="width: 14px; height: 14px; border: 1px solid #ccc;"></div>
+                                <span>{{ color.name }}</span>
+                                <small style="margin-left: auto; color: #999;">{{ color.hex }}</small>
+                            </div>
+                        </nz-option>
+                        }
+                    </nz-option-group>
+                    }
+                </nz-select>
+            </nz-space>
+
+            <input *nzSpaceItem [(colorPicker)]="selectedColor" [cpPosition]="'bottom'" [cpToggle]="true"
+                [cpDialogDisplay]="'inline'" [cpAlphaChannel]="'enabled'" [cpOutputFormat]="'rgba'"
+                (colorPickerChange)="onPickerChange($event)" [style.background]="selectedColor" style="display:none" />
+        </nz-space>
+    </div>
+    }
+
+    @if (nzData.type === 'schedule') {
+
+    <div nz-row [nzGutter]="[12, 64]">
+        <div nz-col class="gutter-row" [nzSpan]="7">
+            <div style="text-align: end;">Zeitraum (Beginn - Ende):</div>
+        </div>
+        <div nz-col class="gutter-row" [nzSpan]="17">
+            <nz-range-picker #datePicker [(ngModel)]="editDates" (ngModelChange)="disableOkBtn(false)"
+                [nzFormat]="'dd.MM.yyyy'" [nzShowTime]="false" [nzPlacement]="'bottomRight'" [nzStatus]="scheduleState"
+                [nzRenderExtraFooter]="footerTempl" style="width: 100%"></nz-range-picker>
+            <ng-template #footerTempl>
+                <div style="text-align: right; padding: 8px;">
+                    <button nz-button nzType="primary" nzSize="small" (click)="forceConfirm()">
+                        OK
+                    </button>
+                </div>
+            </ng-template>
+        </div>
+    </div>
+
+    <div nz-row [nzGutter]="[12, 64]" nzAlign="middle">
+        <div nz-col class="gutter-row" [nzSpan]="7">
+            <div style="text-align: end;">Wiederholung:</div>
+        </div>
+        <div nz-col class="gutter-row" [nzSpan]="9">
+            <nz-select [(ngModel)]="editIntervall" (ngModelChange)="disableOkBtn(false)" style="width: 90%">
+                <nz-option nzValue="none" nzLabel="Einmalig"></nz-option>
+                <nz-option nzValue="daily" nzLabel="Täglich"></nz-option>
+                <nz-option nzValue="weekly" nzLabel="Wöchentlich"></nz-option>
+                <nz-option nzValue="monthly" nzLabel="Monatlich (gleicher Tag)"></nz-option>
+            </nz-select>
+        </div>
+        <div nz-col class="gutter-row" [nzSpan]="8">
+            <label [style.marginRight.px]="16">Anzeige-Status:</label>
+            <nz-switch [(ngModel)]="editAktiv" (ngModelChange)="disableOkBtn(false)" nzCheckedChildren="Aktiv"
+                nzUnCheckedChildren="Inaktiv"></nz-switch>
+        </div>
+    </div>
+
+    }

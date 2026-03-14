@@ -1,0 +1,26 @@
+
+@if (itemService.viewConfig$ | async; as config) {
+
+<div class="main"
+    [style.background]="(config.showColor && (activeItem?.hintergrund | isColor)) ? activeItem?.hintergrund : 'none'">
+
+    @if (config.showFile && activeItem && !(activeItem.hintergrund | isColor)) {
+
+    @if (activeItem.mediaType === 'image') {
+    <img [src]="activeItem.hintergrund | imageUrl" class="fill" [alt]="`News #${activeItem.id}`">
+    }
+    @if (activeItem.mediaType === 'pdf') {
+    <iframe [src]="activeItem.hintergrund | imageUrl | safeUrl" class="fill"></iframe>
+    }
+    }
+
+    <!-- Der Text liegt immer drüber -->
+    @if (config.showText && activeItem) {
+    @if(activeItem.text && activeItem.text.trim().length > 0){
+    <div class="message message-preview" [innerHTML]="activeItem.text | safeHtml"></div>
+    } @else {
+    <div class="message placeholder">Kein Inhalt vorhanden...</div>
+    }
+    }
+</div>
+}

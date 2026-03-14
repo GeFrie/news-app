@@ -1,0 +1,110 @@
+<nz-layout class="custom-layout">
+    <nz-header class="custom-header">
+        TSG News - Dashboard
+    </nz-header>
+    <nz-layout>
+        <nz-sider [nzWidth]="'250px'">
+            <div class="left-sider-content">
+                <ul nz-menu nzMode="inline" [style.marginBottom.px]="102">
+                    <li nz-menu-item routerLink="/dashboard/editor" routerLinkActive="ant-menu-item-selected"
+                        [routerLinkActiveOptions]="{exact: true}">Editor</li>
+                    <li nz-menu-item routerLink="/dashboard/sort" routerLinkActive="ant-menu-item-selected"
+                        [routerLinkActiveOptions]="{exact: true}">Sortierung</li>
+                    <li nz-menu-item routerLink="/dashboard/preview" routerLinkActive="ant-menu-item-selected"
+                        [routerLinkActiveOptions]="{exact: true}">Vorschau</li>
+                </ul>
+
+                <div>
+                    @if(currentRoute === 'editor') {
+                    <nz-space nzDirection="vertical">
+                        <nz-space nzDirection="horizontal">
+                            <button *nzSpaceItem class="editor-btn" nz-button nzType="default"
+                                (click)="showModal('text')">
+                                Text bearbeiten
+                            </button>
+                            <nz-switch *nzSpaceItem [(ngModel)]="showText" (ngModelChange)="hideView('text')"
+                                nz-tooltip="Textfeld anzeigen" [nzTooltipColor]="'gray'"
+                                [nzTooltipPlacement]="'right'" />
+                        </nz-space>
+                        <nz-space nzDirection="horizontal">
+                            <button *nzSpaceItem class="editor-btn" nz-button nzType="default"
+                                (click)="showModal('file')">
+                                Datei einfügen
+                            </button>
+                            <nz-switch *nzSpaceItem [(ngModel)]="showFile" (ngModelChange)="hideView('file')"
+                                nz-tooltip="Hintergrund-Bild anzeigen" [nzTooltipColor]="'gray'"
+                                [nzTooltipPlacement]="'right'" />
+                        </nz-space>
+                        <nz-space nzDirection="horizontal">
+                            <button *nzSpaceItem class="editor-btn" nz-button nzType="default"
+                                (click)="showModal('color')">
+                                Hintergrund-Farbe
+                            </button>
+                            <nz-switch *nzSpaceItem [(ngModel)]="showColor" (ngModelChange)="hideView('color')"
+                                nz-tooltip="Hintergrund-Farbe anzeigen" [nzTooltipColor]="'gray'"
+                                [nzTooltipPlacement]="'right'" />
+                        </nz-space>
+                        <nz-space nzDirection="horizontal">
+                            <button *nzSpaceItem class="editor-btn" nz-button nzType="default"
+                                (click)="showModal('schedule')">
+                                Planung & Status
+                            </button>
+                            <nz-switch *nzSpaceItem [ngModel]="itemService.selectedItem?.sichtbar" [nzDisabled]="true"
+                                nz-tooltip="Aktivierungsstatus" [nzTooltipColor]="'gray'"
+                                [nzTooltipPlacement]="'right'" />
+                        </nz-space>
+                    </nz-space>
+                    }
+                </div>
+
+                <nz-space nzDirection="vertical"
+                    style="position: absolute; bottom: 18px; width: calc(156px + 8px + 44px);">
+                    <button nz-button nzType="default" nzBlock [disabled]="isNew" (click)="createItem()">
+                        Neu
+                    </button>
+                    <button nz-button nzType="primary" nzBlock [nzLoading]="isSaving"
+                        [disabled]="!itemChanged || isSaving" (click)="saveItem()">
+                        Speichern
+                    </button>
+                    <button nz-button nzType="default" nzDanger nzBlock [nzLoading]="isDeleting"
+                        [disabled]="!removable || isDeleting" (click)="deleteItem()">
+                        Löschen
+                    </button>
+                </nz-space>
+            </div>
+        </nz-sider>
+
+        <nz-content>
+            <div class="inner-content">
+                <router-outlet></router-outlet>
+            </div>
+        </nz-content>
+
+        <nz-sider class="right-sider" [nzWidth]="rightSiderWidth + 'px'">
+            <h4>gespeicherte News</h4>
+            <div class="thumbnail-list">
+                @for (item of validItems; track item.id) {
+                <div [id]="'thumb-' + item.id" class="thumbnail" (click)="selectItem(item)"
+                    [class.selected]="(selectedItem | async)?.id === item.id"
+                    [style.background]="(item?.hintergrund | isColor) ? item?.hintergrund : 'none'">
+
+                    @if (!(item.hintergrund | isColor)) {
+                    @if (item.mediaType === 'image') {
+                    <img [src]="item.hintergrund | imageUrl" class="fill" [alt]="`News #${item.id}`">
+                    }
+                    @if (item.mediaType === 'pdf') {
+                    <iframe [src]="item.hintergrund | imageUrl | safeUrl" class="fill"></iframe>
+                    }
+                    }
+                    <!-- Der Text liegt immer drüber -->
+                    <div class="message" [innerHTML]="item.text | safeHtml"></div>
+                </div>
+                }
+            </div>
+        </nz-sider>
+    </nz-layout>
+
+    <nz-footer class="custom-footer">
+        <span style="font-size: medium;">&copy;</span> 2026 - GFHsoft Engineering
+    </nz-footer>
+</nz-layout>

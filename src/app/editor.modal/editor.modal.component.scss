@@ -1,0 +1,61 @@
+.html-header {
+    margin: 15px 0 5px 6px;
+}
+
+.html {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 0.4rem;
+    background-color: #f1f1f1;
+    // margin-top: 24px;
+    min-height: 38px;
+    max-height: 10rem;
+    overflow: auto;
+}
+
+::ng-deep .NgxEditor__Content {
+    height: 10rem;
+    /* Deine feste Wunschhöhe */
+    overflow-y: auto;
+    /* Scrollbalken, falls Inhalt zu lang */
+}
+
+.color-picker-container {
+    position: relative;
+    height: 100%;
+    width: 100%;
+    text-align: center;
+}
+
+.preview-box {
+    border: 1px solid silver;
+    height: 200px;
+    width: 275px;
+}
+
+.preview-label {
+    position: absolute;
+    margin-left: 4px;
+    top: 0;
+}
+
+.setting-item {
+    margin-bottom: 24px;
+}
+
+::ng-deep .ant-picker-footer-extra button,
+::ng-deep .ant-picker-ok button {
+    background-color: #1890ff !important;
+    border-color: #1890ff !important;
+    color: #fff !important;
+    height: 24px !important;
+    line-height: 1.5;
+    padding: 0 8px;
+    font-size: 12px;
+    opacity: 1 !important;
+}
+
+::ng-deep .ant-picker-footer-extra button:hover {
+    background-color: #40a9ff !important;
+    border-color: #40a9ff !important;
+}

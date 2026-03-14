@@ -1,0 +1,19 @@
+<div cdkDropList 
+     cdkDropListOrientation="horizontal" 
+     class="sort-list" 
+     (cdkDropListDropped)="drop($event)">
+  
+  @for (item of items; track item.id) {
+    <div class="sort-item" cdkDrag>
+      <!-- Deine Thumbnail-Vorschau (wie im Sider) -->
+      <div class="thumbnail-preview">
+        <div class="fill">...</div>
+        <div class="message" [innerHTML]="item.text | safeHtml"></div>
+      </div>
+      <div class="sort-handle" cdkDragHandle>
+        <i nz-icon nzType="holder"></i>
+        <span>News #{{item.id}}</span>
+      </div>
+    </div>
+  }
+</div>

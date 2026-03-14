@@ -1,1 +1,50 @@
-/* You can add global styles to this file, and also import other style files */
+:root {
+  /* Hintergrund des gesamten Menüs */
+  --ngx-editor-menubar-bg-color: whitesmoke !important;
+
+  /* Farbe der Icons (wichtig bei dunklem Hintergrund) */
+  --ngx-editor-menu-item-color: #ffffff !important;
+
+  /* Farbe der Trennstriche */
+  --ngx-editor-menu-border-color: #4b5e34 !important;
+
+  /* Hintergrundfarbe beim Drüberfahren (Hover) */
+  --ngx-editor-menu-item-hover-bg-color: rgba(192, 192, 192, 0.457) !important;
+
+  /* Größe der Menubuttons */
+  --ngx-editor-icon-size: 31px !important;
+}
+
+.main {
+  align-items: center;
+  aspect-ratio: 16 / 9;
+  background-color: transparent;
+  display: flex;
+  justify-content: center;
+  position: relative !important;
+  overflow: hidden;
+}
+
+.message {
+  display: block;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  min-height: 3rem;
+  min-width: 75%;
+  z-index: 10;
+}
+
+.fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  /* Wichtig für Bilder: Füllt den Raum ohne Verzerrung */
+  object-fit: cover;
+  z-index: 1;
+}
