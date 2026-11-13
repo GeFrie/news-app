@@ -46,9 +46,9 @@
     "typescript": "~5.9.3"
   },
   "overrides": {
-    "prosemirror-state": "1.4.3",
-    "prosemirror-view": "1.34.3",
-    "prosemirror-model": "1.22.3",
+    "prosemirror-state": "$prosemirror-state",
+    "prosemirror-view": "$prosemirror-view",
+    "prosemirror-model": "$prosemirror-model",
     "prosemirror-transform": "1.10.2"
   }
 }
