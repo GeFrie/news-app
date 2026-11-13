@@ -14,7 +14,7 @@
     @for (item of sortedItems; track item.id) {
 
     <div class="item" cdkDrag (click)="selectItem(item)" [class.selected]="(selectedItem | async)?.id === item.id"
-        [style.background]="(item?.hintergrund | isColor) ? item?.hintergrund : 'none'"
+        [style.background]="($safeNavigationMigration(item?.hintergrund) | isColor) ? item?.hintergrund : 'none'"
         (cdkDragStarted)="onDragStarted()" (cdkDragEnded)="onDragEnded()">
 
         @if (!(item.hintergrund | isColor)) {

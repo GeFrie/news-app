@@ -1,4 +1,4 @@
-import { Component, OnInit, Input } from '@angular/core';
+import { Component, OnInit, Input, ChangeDetectionStrategy } from '@angular/core';
 import { NzCardModule } from 'ng-zorro-antd/card';
 
 @Component({
@@ -16,6 +16,7 @@ import { NzCardModule } from 'ng-zorro-antd/card';
       </nz-card>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './card-component.component.scss',
 })
 

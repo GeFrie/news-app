@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -9,6 +9,7 @@ import { NzUploadChangeParam, NzUploadModule } from 'ng-zorro-antd/upload';
   selector: 'upload-component',
   imports: [NzButtonModule, NzIconModule, NzUploadModule, ],
   templateUrl: './upload.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './upload.component.scss',
 })
 

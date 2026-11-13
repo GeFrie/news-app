@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { ArrayConversion } from '../shared/utils/array-conversion.utils';
 import { filter, map, mergeAll, Observable, of, Subscription, switchMap, tap } from 'rxjs';
@@ -30,6 +30,7 @@ interface StateChangeEvent {
     SafeHtmlPipe,
   ],
   templateUrl: './preview.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './preview.component.scss',
 })
 

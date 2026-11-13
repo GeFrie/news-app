@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy, ViewChild, signal, ChangeDetectorRef, AfterViewInit, ViewChildren, QueryList, ElementRef } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, ViewChild, signal, ChangeDetectorRef, AfterViewInit, ViewChildren, QueryList, ElementRef, ChangeDetectionStrategy } from '@angular/core';
 
 import { Editor, schema, Toolbar, NgxEditorMenuComponent, NgxEditorComponent } from 'ngx-editor';
 import { Schema, Mark, MarkType } from 'prosemirror-model';
@@ -55,6 +55,7 @@ import { EditorConfigService } from '../services/editor.config.service';
     DatePipe,
   ],
   templateUrl: './editor.modal.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './editor.modal.component.scss',
 })
 

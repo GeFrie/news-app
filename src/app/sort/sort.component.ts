@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CdkDragDrop, moveItemInArray, transferArrayItem, DragDropModule, copyArrayItem } from '@angular/cdk/drag-drop';
 import { ItemService } from '../services/item.service';
 import { SortService } from '../services/sort.service';
@@ -26,6 +26,7 @@ import { SaveState, SaveStateService } from '../services/save.state.service';
     NzIconModule,
   ],
   templateUrl: './sort.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./sort.component.scss']
 })
 export class SortComponent implements OnInit {

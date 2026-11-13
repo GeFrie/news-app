@@ -6,7 +6,7 @@ import { de_DE, provideNzI18n } from 'ng-zorro-antd/i18n';
 import { registerLocaleData } from '@angular/common';
 import de from '@angular/common/locales/de';
 import { FormsModule } from '@angular/forms';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 
 import { NgxEditorModule } from 'ngx-editor';
 import { NzModalModule } from 'ng-zorro-antd/modal';
@@ -31,7 +31,7 @@ export const appConfig: ApplicationConfig = {
     { provide: LOCALE_ID, useValue: 'de-DE' },
     { provide: NZ_DATE_CONFIG, useValue: dateConfig },
     importProvidersFrom(FormsModule),
-    provideHttpClient(),
+    provideHttpClient(withXhr()),
     importProvidersFrom(
       NgxEditorModule.forRoot({
         locals: {

@@ -1,7 +1,7 @@
 @if (configService.viewConfig$ | async; as config) {
 
 <div class="main"
-    [style.background]="(config.showColor && (activeItem?.hintergrund | isColor)) ? activeItem?.hintergrund : 'none'">
+    [style.background]="(config.showColor && ($safeNavigationMigration(activeItem?.hintergrund) | isColor)) ? activeItem?.hintergrund : 'none'">
 
     @if (config.showFile && activeItem && !(activeItem.hintergrund | isColor)) {
 

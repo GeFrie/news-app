@@ -59,7 +59,7 @@
                                 (click)="showModal('plan')">
                                 Zeit-Planung
                             </button>
-                            <nz-switch *nzSpaceItem [ngModel]="(selectedItem$ | async)?.sichtbar"
+                            <nz-switch *nzSpaceItem [ngModel]="$safeNavigationMigration((selectedItem$ | async)?.sichtbar)"
                                 (ngModelChange)="changeVisibility($event)" nz-tooltip="Aktivierungsstatus setzen"
                                 [nzTooltipColor]="'gray'" [nzTooltipPlacement]="'right'" />
                         </nz-space>
@@ -201,7 +201,7 @@
                 <!-- [class.selected]="(selectedItem$ | async)?.id === item.id" -->
                 <div [id]="'thumb-' + item.id" class="thumbnail" cdkDrag [cdkDragData]="item"
                     (click)="selectItem(item, $event)" [class.selected]="activeSelectedId === item.id"
-                    [style.background]="(item?.hintergrund | isColor) ? item?.hintergrund : 'none'"
+                    [style.background]="($safeNavigationMigration(item?.hintergrund) | isColor) ? item?.hintergrund : 'none'"
                     (cdkDragStarted)="onDragStarted()" (cdkDragEnded)="onDragEnded()">
 
                     @if (!(item.hintergrund | isColor)) {

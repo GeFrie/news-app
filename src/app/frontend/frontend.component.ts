@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener, ChangeDetectionStrategy } from '@angular/core';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { ArrayConversion } from '../shared/utils/array-conversion.utils';
 import { map, mergeAll, of, Subscription, tap } from 'rxjs';
@@ -24,6 +24,7 @@ import { HttpClient } from '@angular/common/http';
     SafeHtmlPipe,
   ],
   templateUrl: './frontend.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './frontend.component.scss',
 })
 export class FrontendComponent implements OnInit, OnDestroy {
