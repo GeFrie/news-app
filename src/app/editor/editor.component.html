@@ -1,5 +1,4 @@
-
-@if (itemService.viewConfig$ | async; as config) {
+@if (configService.viewConfig$ | async; as config) {
 
 <div class="main"
     [style.background]="(config.showColor && (activeItem?.hintergrund | isColor)) ? activeItem?.hintergrund : 'none'">
@@ -17,7 +16,7 @@
     <!-- Der Text liegt immer drüber -->
     @if (config.showText && activeItem) {
     @if(activeItem.text && activeItem.text.trim().length > 0){
-    <div class="message message-preview" [innerHTML]="activeItem.text | safeHtml"></div>
+    <div class="message message-preview news-content-output preview-scaled" [innerHTML]="activeItem.text | safeHtml"></div>
     } @else {
     <div class="message placeholder">Kein Inhalt vorhanden...</div>
     }

@@ -1,13 +1,13 @@
 import { TestBed } from '@angular/core/testing';
 
-import { ConversionService } from './conversion.service';
+import { SortService } from './sort.service';
 
-describe('CoversionService', () => {
-  let service: ConversionService;
+describe('SortService', () => {
+  let service: SortService;
 
   beforeEach(() => {
     TestBed.configureTestingModule({});
-    service = TestBed.inject(ConversionService);
+    service = TestBed.inject(SortService);
   });
 
   it('should be created', () => {

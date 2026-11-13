@@ -1,0 +1,52 @@
+.display-container {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    transition: background 0.8s ease-in-out, background-color 0.8s ease-in-out;
+    will-change: background-color;
+}
+
+// Für das Bild und das PDF-Iframe
+.preview-image-css {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover; // Sorgt dafür, dass das Bild ohne Verzerrung den Raum füllt
+    z-index: 1; // Liegt ganz unten
+    will-change: opacity;
+    animation: crossFade 0.8s ease-in-out forwards;
+}
+
+@keyframes crossFade {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.no-items {
+    background-color: green;
+    color: white;
+    font-size: 4em;
+
+    aspect-ratio: 16 / 9;
+    height: 100&;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.no-items p {
+    margin-top: 40px;
+}
+
+.no-items p:first-child {
+    margin-top: 0px;
+}

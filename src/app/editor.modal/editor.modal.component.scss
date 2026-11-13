@@ -1,61 +1,250 @@
 .html-header {
-    margin: 15px 0 5px 6px;
+  margin: 16px 0 4px 6px;
 }
 
 .html {
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 0.4rem;
-    background-color: #f1f1f1;
-    // margin-top: 24px;
-    min-height: 38px;
-    max-height: 10rem;
-    overflow: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 0 0 2px 4px;
+  background-color: #f1f1f1;
+  max-height: 70px;
+  overflow: auto;
+}
+
+.html-input {
+  background-color: #f1f1f1;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  resize: none;
+  width: 100%;
 }
 
 ::ng-deep .NgxEditor__Content {
-    height: 10rem;
-    /* Deine feste Wunschhöhe */
-    overflow-y: auto;
-    /* Scrollbalken, falls Inhalt zu lang */
+  height: 685px;
+  overflow-y: auto;
 }
 
 .color-picker-container {
-    position: relative;
-    height: 100%;
-    width: 100%;
-    text-align: center;
+  position: relative;
+  height: 100%;
+  width: 100%;
+  text-align: center;
 }
 
 .preview-box {
-    border: 1px solid silver;
-    height: 200px;
-    width: 275px;
+  border: 1px solid silver;
+  height: 200px;
+  width: 275px;
 }
 
 .preview-label {
-    position: absolute;
-    margin-left: 4px;
-    top: 0;
+  position: absolute;
+  margin-left: 4px;
+  top: 0;
 }
 
 .setting-item {
-    margin-bottom: 24px;
+  margin-bottom: 24px;
 }
 
 ::ng-deep .ant-picker-footer-extra button,
 ::ng-deep .ant-picker-ok button {
-    background-color: #1890ff !important;
-    border-color: #1890ff !important;
-    color: #fff !important;
-    height: 24px !important;
-    line-height: 1.5;
-    padding: 0 8px;
-    font-size: 12px;
-    opacity: 1 !important;
+  background-color: #1890ff !important;
+  border-color: #1890ff !important;
+  color: #fff !important;
+  height: 24px !important;
+  line-height: 1.5;
+  padding: 0 8px;
+  font-size: 12px;
+  opacity: 1 !important;
 }
 
 ::ng-deep .ant-picker-footer-extra button:hover {
-    background-color: #40a9ff !important;
-    border-color: #40a9ff !important;
+  background-color: #40a9ff !important;
+  border-color: #40a9ff !important;
+}
+
+::ng-deep .ant-switch-inner {
+  height: 22px !important;
+  line-height: 20px !important;
+  // vertical-align: middle !important;
+}
+
+div[nz-button-group] button[nz-button] {
+  width: 36px !important;
+  height: 36px !important;
+  padding: 0 !important;
+  text-align: center !important;
+  margin-right: 6px !important;
+}
+
+.monthdays-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  /* Gleichmäßiger Abstand nach rechts und unten */
+  //   max-width: 350px; /* Begrenzt die Breite, damit z.B. immer 7 Buttons in einer Reihe stehen */
+}
+
+.monthdays-container button[nz-button] {
+  width: 36px !important;
+  height: 36px !important;
+  padding: 0 !important;
+  text-align: center !important;
+}
+
+th,
+td {
+  text-align: center !important;
+}
+
+:host ::ng-deep .ant-table-small .ant-table-tbody>tr>td,
+:host ::ng-deep .ant-table-small .ant-table-thead>tr>th {
+  padding: 4px 8px !important;
+  //   line-height: 1 !important;
+  height: auto !important;
+}
+
+/* Ändert die Hintergrundfarbe der ausgewählten Zeile */
+:host ::ng-deep .selected-row>td {
+  background-color: #e6f7ff !important;
+  /* Ein dezentes Ant-Design Blau */
+  font-weight: bold;
+}
+
+/* Optional: Farbe beim Drüberfahren (Hover) */
+:host ::ng-deep .ant-table-tbody>tr:hover>td {
+  background-color: #f5f5f5;
+}
+
+.delete-plan-btn {
+  padding: 0;
+  height: 24px;
+  width: 24px;
+
+  &:hover {
+    ::ng-deep .anticon-delete {
+      svg [fill="#1890ff"] {
+        fill: #ff4d4f !important;
+      }
+
+      // Tauscht das Primär-Blau gegen Rot
+    }
+  }
+}
+
+/* Klassen für die Schriftgrößen */
+span.fs-small {
+  font-size: 12px;
+}
+
+span.fs-medium {
+  font-size: 16px;
+}
+
+span.fs-large {
+  font-size: 20px;
+}
+
+span.fs-xlarge {
+  font-size: 28px;
+}
+
+/* Styling für das Dropdown im Editor-Menü */
+.font-size-select {
+  height: 24px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: white;
+  font-size: 12px;
+  padding: 0 4px;
+  outline: none;
+  cursor: pointer;
+
+  &:hover {
+    border-color: #1890ff;
+  }
+}
+
+.toolbar-btn {
+  height: 31px;
+  width: 31px;
+  border: 0px;
+  border-radius: 2px;
+  background: whitesmoke;
+  font-size: 18px;
+  font-weight: 500;
+  -webkit-text-stroke: 0.3px currentColor;
+  // padding: 0 8px;
+  outline: none;
+  cursor: pointer;
+
+  &:hover {
+    background-color: gainsboro;
+  }
+}
+
+.toolbar-paragraph {
+  font-size: 20px;
+  font-weight: 700;
+  padding: 0;
+}
+
+.editor-menu-active {
+  background-color: #e8f0fe;
+  color: #1a73e8;
+}
+
+.current-size-display {
+  // font-size: 12px;
+  color: #555;
+  padding: 0 4px 0 8px;
+  display: inline-flex;
+  align-items: center;
+  user-select: none;
+}
+
+.current-size-display strong {
+  margin-left: 4px;
+  color: #000;
+}
+
+::ng-deep .NgxEditor__Content {
+  font-size: var(--default-font-size) !important;
+}
+
+::ng-deep .NgxEditor__Content h1 {
+  font-size: calc(var(--default-font-size) / 16 * 32) !important;
+}
+
+::ng-deep .NgxEditor__Content h2 {
+  font-size: calc(var(--default-font-size) / 16 * 24) !important;
+}
+
+::ng-deep .NgxEditor__Content h3 {
+  font-size: calc(var(--default-font-size) / 16 * 19) !important;
+}
+
+::ng-deep .NgxEditor__Content h4 {
+  font-size: calc(var(--default-font-size) / 16 * 16) !important;
+}
+
+.NgxEditor .NgxEditor__Content {
+  zoom: calc(1384 / 1920) !important;
+}
+
+// .editor-contrast-wrapper {
+//   ::ng-deep .NgxEditor__Content {
+//     background-color: var(--editor-bg, #ffffff) !important;
+//     color: var(--editor-text, #000000) !important;
+//     transition: background-color 0.25s ease;
+
+//     // Falls ungefärbter Standardtext auf dunklem Hintergrund steht, bleibt er lesbar
+//     // color: inherit;
+//   }
+// }
+:host ::ng-deep .editor-contrast-wrapper .NgxEditor__Content {
+  background-color: var(--editor-bg, #ffffff) !important;
+  color: var(--editor-text, #000000) !important;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }

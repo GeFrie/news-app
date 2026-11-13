@@ -6,7 +6,6 @@ import { de_DE, provideNzI18n } from 'ng-zorro-antd/i18n';
 import { registerLocaleData } from '@angular/common';
 import de from '@angular/common/locales/de';
 import { FormsModule } from '@angular/forms';
-import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideHttpClient } from '@angular/common/http';
 
 import { NgxEditorModule } from 'ngx-editor';
@@ -32,7 +31,6 @@ export const appConfig: ApplicationConfig = {
     { provide: LOCALE_ID, useValue: 'de-DE' },
     { provide: NZ_DATE_CONFIG, useValue: dateConfig },
     importProvidersFrom(FormsModule),
-    provideAnimationsAsync(),
     provideHttpClient(),
     importProvidersFrom(
       NgxEditorModule.forRoot({
@@ -43,7 +41,11 @@ export const appConfig: ApplicationConfig = {
           strike: 'Durchgestrichen',
           bullet_list: 'Aufzählung',
           ordered_list: 'Nummerierte Liste',
-          heading: 'Überschrift',
+          heading: 'Überschrift...',
+          h1: 'Überschrift 1',
+          h2: 'Überschrift 2',
+          h3: 'Überschrift 3',
+          h4: 'Überschrift 4',
           url: 'URL',
           text: 'Text',
           openInNewTab: 'In neuem Tab öffnen',
@@ -65,8 +67,8 @@ export const appConfig: ApplicationConfig = {
           format_clear: 'Format löschen',
           indent: 'Einzug vergrößern',
           outdent: 'Einzug verkleinern',
-          superscript: 'hochgestellt',
-          subscript: 'tiefgestellt',
+          superscript: 'Hochgestellt',
+          subscript: 'Tiefgestellt',
           undo: 'Rückgängig',
           redo: 'Wiederholen',
           //     insertTable: 'Tabelle einfügen',

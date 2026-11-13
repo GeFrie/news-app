@@ -4,13 +4,14 @@ import { DashboardComponent } from './dashboard/dashboard.component';
 import { SortComponent } from './sort/sort.component';
 import { EditorComponent } from './editor/editor.component';
 import { PreviewComponent } from './preview/preview.component';
+import { pendingChangesGuard } from './guards/pending-changes.guard';
 
 export const routes: Routes = [
-    { path: 'viewer', component: FrontendComponent },
+    { path: 'frontend', component: FrontendComponent },
     {
         path: 'dashboard', component: DashboardComponent,
         children: [
-            { path: 'editor', component: EditorComponent },
+            { path: 'editor', component: EditorComponent, canDeactivate: [pendingChangesGuard] },
             { path: 'sort', component: SortComponent },
             { path: 'preview', component: PreviewComponent },
             { path: '', redirectTo: 'editor', pathMatch: 'full' }

@@ -19,7 +19,7 @@ export class UploadComponent {
   handleChange({ file, fileList }: NzUploadChangeParam): void {
     const status = file.status;
     if (status !== 'uploading') {
-      console.log(file, fileList);
+      // console.log(file, fileList);
     }
     if (status === 'done') {
       this.messageService.success(`${file.name} wurde hochgeladen.`);

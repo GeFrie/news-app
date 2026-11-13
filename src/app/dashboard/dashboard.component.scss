@@ -1,15 +1,11 @@
-:root {
-    --primary-color: #1890ff;
-}
+$primary-color: #1890ff;
+$danger-color: #ff4d4f;
 
 nz-sider {
     background: white;
     padding-top: 18px;
     text-align: center;
 }
-
-$primary-color: #1890ff;
-$danger-color: #ff4d4f;
 
 nz-content {
     flex: 1;
@@ -75,85 +71,6 @@ nz-content {
     width: 156px;
 }
 
-.thumbnail-list {
-    padding-bottom: 16px;
-}
-
-.thumbnail {
-    align-items: center;
-    aspect-ratio: 16 / 9;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    margin: 16px 8px;
-    display: flex;
-    justify-content: center;
-    position: relative !important;
-    width: calc(100% - 16px);
-}
-
-// /* Der Hintergrund (Bild/Farbe/PDF) */
-// .thumbnail .fill {
-//     position: absolute;
-//     top: 0;
-//     left: 0;
-//     width: 100%;
-//     height: 100%;
-//     z-index: 1;
-//     object-fit: cover;
-// }
-
-/* Der Text-Container */
-.thumbnail .message {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-
-    /* Wir geben dem Container eine feste "virtuelle" Breite, 
-       die der Editor-Breite entspricht (z.B. 1000px). 
-       Durch das Scale wird sie dann passend auf das Thumbnail geschrumpft. */
-    width: 700px;
-
-    /* Zentrierung des skalierten Containers */
-    transform: translate(-50%, -50%) scale(0.2);
-    transform-origin: center center;
-
-    /* Zurück zu Block, damit P-Tags umbrechen */
-    display: block;
-    text-align: left;
-}
-
-/* Die P-Tags im Sider wieder zu Block-Elementen machen */
-.thumbnail .message p {
-    display: block !important;
-    margin: 0 !important;
-    margin-bottom: 0.5em !important;
-    /* Kleiner Abstand zwischen Absätzen */
-    width: 100%;
-}
-
-/* Damit die HTML-Tags (p, strong) im Sider nicht ihre eigenen 
-   Standard-Abstände erzwingen, die das Scaling verfälschen: */
-.thumbnail .message * {
-    margin: 0 !important;
-    display: inline-block;
-}
-
-/* Der aktive Zustand */
-.thumbnail.selected {
-    border: 2px solid $primary-color; //#1890ff;
-    /* Ant Design Blau */
-    box-shadow: 0 0 10px rgba(24, 144, 255, 0.75);
-    transform: scale(1.02);
-    /* Minimales Vergrößern */
-    z-index: 10;
-}
-
-/* Optional: Hover-Effekt für bessere UX */
-.thumbnail:hover:not(.selected) {
-    border-color: rgba(0, 0, 0, .5);
-    transform: scale(1.02);
-}
-
 /* Der Zustand "AN" (Green) - ist meist schon grün, hier zur Sicherheit */
 ::ng-deep .ant-switch-disabled.ant-switch-checked {
   background-color: #52c41a !important;
@@ -161,43 +78,3 @@ nz-content {
   cursor: not-allowed !important; 
 }
 
-// /* Der Container für den ngx-editor Inhalt */
-// .ngx-preview-container {
-//     position: relative;
-//     top: 0;
-//     left: 0;
-//     /* Wir rendern den Text groß (z.B. 4x Breite)... */
-//     width: 400%;
-//     height: 400%;
-//     /* ...und skalieren ihn dann runter */
-//     /* 1/4 der Größe */
-//     transform: scale(0.25);
-//     transform-origin: top left;
-//     padding: 20px;
-//     /* Keine Interaktion in der Vorschau */
-//     pointer-events: none;
-//     z-index: 2;
-// }
-
-// /* Wichtig: Styles für innerHTML-Elemente (ngx-editor nutzt oft diese Tags) */
-// .ngx-preview-container ::ng-deep {
-//     p {
-//         margin-bottom: 0.5em;
-//     }
-
-//     h1,
-//     h2,
-//     h3 {
-//         margin-top: 0;
-//     }
-
-//     ul,
-//     ol {
-//         padding-left: 20px;
-//     }
-
-//     img {
-//         max-width: 100%;
-//         height: auto;
-//     }
-// }

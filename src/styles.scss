@@ -15,6 +15,9 @@
   --ngx-editor-icon-size: 31px !important;
 }
 
+$primary-color: #1890ff;
+$danger-color: #ff4d4f;
+
 .main {
   align-items: center;
   aspect-ratio: 16 / 9;
@@ -34,8 +37,87 @@
   justify-content: center;
   padding: 0 4px;
   min-height: 3rem;
-  min-width: 75%;
+  width: 75%;
   z-index: 10;
+}
+
+.preview-scaled {
+  zoom: calc(1384 / 1920);
+}
+
+.thumbnail-list {
+  padding-bottom: 16px;
+}
+
+.thumbnail {
+  align-items: center;
+  aspect-ratio: 16 / 9;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin: 16px 8px;
+  display: flex;
+  justify-content: center;
+  position: relative !important;
+  width: calc(100% - 16px);
+}
+
+/* Der Text-Container */
+// .thumbnail .message {
+//   cursor: default;
+//   position: absolute;
+//   top: 50%;
+//   left: 50%;
+//   /* feste "virtuelle" Breite für Container, 
+//        die durch Scale passend auf das Thumbnail geschrumpft wird */
+//   width: 1000px;
+//   /* Zentrierung des skalierten Containers */
+//   transform: translate(-50%, -50%) scale(.135);
+//   transform-origin: center center;
+//   /* Zurück zu Block, damit P-Tags umbrechen */
+//   display: block;
+//   text-align: left;
+// }
+.thumbnail .message {
+  cursor: default;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1440px;
+  transform: translate(-50%, -50%) scale(0.155); //scale(0.111);
+  transform-origin: center center;
+  display: block;
+  text-align: center;
+  text-align: left; //* <-- Standardmäßig linksbündig, HTML-Styles überschreiben dies bei Bedarf */
+}
+
+/* Der aktive Zustand */
+.thumbnail.selected {
+  border: 2px solid $primary-color; //#1890ff;
+  /* Ant Design Blau */
+  box-shadow: 0 0 10px rgba($primary-color, 0.75);
+  /* Minimales Vergrößern */
+  // transform: scale(1.02);
+  z-index: 10;
+}
+
+/* Optional: Hover-Effekt für bessere UX */
+.thumbnail:hover:not(.selected) {
+  border-color: rgba(0, 0, 0, .5);
+  transform: scale(1.007);
+}
+
+.thumbnail.selected:hover {
+  transform: scale(1.015);
+}
+
+/* geht nicht */
+.thumbnail.disabled {
+  /* Macht das Element blasser */
+  opacity: 0.5;
+  /* Zeigt den "Verboten"-Zeiger */
+  cursor: not-allowed;
+  /* Verhindert absolut alle Klicks und Hover-Effekte */
+  pointer-events: none;
 }
 
 .fill {
@@ -46,5 +128,139 @@
   width: 100%;
   /* Wichtig für Bilder: Füllt den Raum ohne Verzerrung */
   object-fit: cover;
+  /* Optimiert das Rendering für die GPU */
+  will-change: transform, opacity;
   z-index: 1;
+}
+
+.cdk-drag-dragging .thumbnail {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.cdk-drag-dragging iframe {
+  pointer-events: none !important;
+}
+
+/* Das Element, das du gerade am Mauszeiger bewegst */
+.cdk-drag-preview {
+  opacity: 0.7;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.19), 0 6px 6px rgba(0, 0, 0, 0.23);
+  width: 214px !important;
+  height: 120px !important;
+  background: white;
+  border: 1px solid #1890ff;
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  position: relative;
+  z-index: 1000;
+}
+
+// .cdk-drag-preview .message {
+//   position: absolute;
+//   top: 50%;
+//   left: 50%;
+//   width: 1000px;
+//   transform: translate(-50%, -50%) scale(0.135) !important;
+//   transform-origin: center center;
+//   text-align: left;
+//   pointer-events: none;
+// }
+.cdk-drag-preview .message {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1440px;
+  transform: translate(-50%, -50%) scale(0.155) !important; // scale(0.111)
+  transform-origin: center center;
+  // text-align: center;
+  text-align: left; // <-- Ebenfalls linksbündig
+  pointer-events: none;
+}
+
+.cdk-drag-preview .fill {
+  width: 100%;
+  height: 100%;
+}
+
+/* Das "Loch", das an der alten Stelle in der Liste bleibt */
+.cdk-drag-placeholder {
+  opacity: 0.3;
+  width: 431px;
+  height: 241px;
+  margin: -4px 0 0 -4px;
+  transform: scale(.98);
+  overflow: hidden;
+  /* Verhindert Baseline-Verschiebung */
+  // display: inline-flex !important;
+  display: inline-block !important;
+  /* Verankert ihn oben in der Flex-Zeile */
+  align-self: flex-start;
+
+  /* Zwingt Ausrichtung an der Oberkante */
+  vertical-align: top !important;
+}
+
+/* width und height für diese eine Liste */
+.thumbnail-list .cdk-drag-placeholder {
+  width: 214px !important;
+  height: 120px !important;
+}
+
+.cdk-drag-placeholder .message {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1440px;
+  transform: translate(-50%, -50%) scale(0.31) !important;
+  transform-origin: center center;
+  text-align: left;
+  pointer-events: none;
+}
+
+/* Animation beim Zurückspringen/Einfügen -- nur in Thumbnails */
+.cdk-drag-animating {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* Auch die anderen Items in der Liste sollen weich ausweichen -- nur in Thumbnails */
+.cdk-drop-list-dragging .thumbnail:not(.cdk-drag-placeholder) {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* Container für die Anzeige im Frontend und in der Vorschau */
+.news-content-output {
+  /* Nutzt die Variable, falls gesetzt, andernfalls greift der Fallback (24px) */
+  font-size: var(--default-font-size);
+  // line-height: 1.5;
+}
+
+/* Automatische, proportionale Skalierung aller Überschriften */
+.news-content-output h1 {
+  font-size: calc(var(--default-font-size) / 16 * 32);
+}
+
+/* 48px */
+.news-content-output h2 {
+  font-size: calc(var(--default-font-size) / 16 * 24);
+}
+
+/* 36px */
+.news-content-output h3 {
+  font-size: calc(var(--default-font-size) / 16 * 19);
+}
+
+/* 28.5px */
+.news-content-output h4 {
+  font-size: calc(var(--default-font-size) / 16 * 16);
+}
+
+/* 24px */
+
+.btn-highlight {
+  background: rgba(24, 144, 255, 0.1) !important;
+  color: rgba(0, 0, 0, 0.85) !important;
+  border: 1px solid rgb(24, 144, 255) !important;
+  width: 100%;
 }

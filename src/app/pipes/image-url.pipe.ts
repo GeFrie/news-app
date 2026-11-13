@@ -9,8 +9,8 @@ import { environment } from '../../environments/environment';
 export class ImageUrlPipe implements PipeTransform {
 
   private readonly baseUrl = environment.httpPath;
-  private readonly imageDir = environment.imgageDir;
-  private readonly fallback = 'assets/images/placeholder.jpg';
+  private readonly imageDir = environment.imageDir;
+  private readonly fallback = 'assets/images/placeholder.png';
 
   transform(value: string | null | undefined): string {
     // 1. Wenn gar kein Wert da ist -> Fallback
@@ -19,7 +19,14 @@ export class ImageUrlPipe implements PipeTransform {
     }
 
     // 2. Wenn es bereits eine vollständige URL (http) oder Base64 (data:) ist -> direkt zurückgeben
-    if (!value || value.startsWith('http') || value.startsWith('data:') || value.startsWith('blob:')) {
+    if (
+      !value ||
+      value.startsWith('http') ||
+      value.startsWith('data:') ||
+      value.startsWith('blob:') ||
+      value.startsWith('assets') ||
+      value.startsWith('/')
+    ) {
       return value || '';
     }
 

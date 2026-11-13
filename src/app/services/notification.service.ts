@@ -15,7 +15,7 @@ export class NotificationService {
     title: string,
     text: string,
     duration: number = 4500,
-    placement: NzNotificationPlacement = 'bottomRight'
+    placement: NzNotificationPlacement = 'topRight'
   ): void {
     this._notify.create(
       type,
@@ -24,7 +24,8 @@ export class NotificationService {
       {
         nzPlacement: placement,
         nzDuration: duration,
-        nzPauseOnHover: duration > 0
+        nzPauseOnHover: duration > 0,
+        nzStyle: { 'white-space': 'pre-line' }
       }
     );
   }

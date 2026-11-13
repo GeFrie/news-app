@@ -1,9 +1,11 @@
-import { inject, Injectable } from '@angular/core';
-import { NZ_MODAL_DATA } from 'ng-zorro-antd/modal';
+import { Injectable } from '@angular/core';
 import { NzModalService } from 'ng-zorro-antd/modal';
 import { EditorModalComponent } from '../editor.modal/editor.modal.component';
 import { ItemService } from './item.service';
-import { Item } from '../interfaces/item';
+import { PlanService } from './plan.service';
+import { Item, Plan } from '../interfaces/item';
+import { formatTimeToSql } from '../shared/utils/time-format.utils';
+
 
 
 @Injectable({ providedIn: 'root' })
@@ -13,23 +15,35 @@ export class ModalManagerService {
   constructor(
     private modal: NzModalService,
     private itemService: ItemService,
+    private planService: PlanService,
   ) { }
 
-  openEditorModal(type: 'text' | 'file' | 'color' | 'schedule', currentData: Item) {
+  openEditorModal(
+    type: 'text' | 'file' | 'color' | 'plan',
+    currentItem: Item,
+    plans: Plan[],
+  ) {
     const title = type === 'text' ? 'Text bearbeiten' :
-      type === 'file' ? 'Datei auswählen' : type === 'color' ? 'Farbe wählen' : 'Planung & Status festlegen';
+      type === 'file' ? 'Datei auswählen' : type === 'color' ? 'Farbe wählen' : 'Zeit-Planung';
 
     const modalRef = this.modal.create({
       nzTitle: title,
       nzContent: EditorModalComponent,
-      nzData: { type, currentData },
+      nzData: { type, currentItem, plans },
       nzOkText: 'Übernehmen',
-      nzWidth: 700,
+      nzWidth: type === 'text' ? 1400 : type === 'color' ? 570 : 700,
+      // nzBodyStyle: {
+      //   'min-height': type === 'text' ? '680px' : 'auto',
+      //   'overflow-y': 'auto'
+      // },
       nzOkDisabled: true,
       nzOnOk: (instance: EditorModalComponent) => {
+        /**
+         * Hier kommen die Werte aus editor.modal.components.ts.apply() an. 
+        */
         const result = instance.apply();
+
         if (result !== false && result !== undefined) {
-          // console.log('modal.result: ', result)
           modalRef.close(result);
           return true;
         }
@@ -51,12 +65,13 @@ export class ModalManagerService {
         if (type === 'color') {
           this.itemService.updateColor(result);
         }
-        if (type === 'schedule') {
-          this.itemService.updateSchedule(result);
+        if (type === 'plan') {
+          this.planService.updatePlan({
+            ...result,
+          });
         }
       }
     });
-
     return modalRef;
   }
 

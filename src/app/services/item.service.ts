@@ -1,75 +1,118 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { NotificationService } from './notification.service';
-import { BehaviorSubject, catchError, map, Observable, of, tap } from 'rxjs';
+import { BehaviorSubject, catchError, map, Observable, of, Subject, take, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { Item } from '../interfaces/item';
-import { detectMediaType, MediaType } from '../shared/utils/media-type.utils';
+import { Item, dbItem } from '../interfaces/item';
+import { detectMediaType } from '../shared/utils/media-type.utils';
+import { EditorConfigService } from './editor.config.service';
+import { SaveState, SaveStateService } from './save.state.service';
 
-export interface ViewConfig {
-  showText: boolean;
-  showFile: boolean;
-  showColor: boolean;
+export interface LivePreviewData extends Item {
+  mode?: 'all' | 'changes' | 'specific';
+  itemIndex?: number;
+  itemCount?: number;
+  currentTime?: string | null;
+  activeIds?: number[];
+  isPlaying?: boolean; // <-- Diese Zeile ergänzen
+  statusAction?: string; // <-- NEU: z. B. "News #5 wird eingeschaltet"}
 }
 
 @Injectable({ providedIn: 'root' })
 
 export class ItemService {
 
-  public detectType(hintergrund: string): MediaType {
-    return detectMediaType(hintergrund);
-  }
-
-  private viewConfig = new BehaviorSubject<ViewConfig>({
-    showText: true,
-    showFile: true,
-    showColor: true
-  });
-
-  viewConfig$ = this.viewConfig.asObservable();
+  readonly config$;
 
   private _selectedItem = new BehaviorSubject<Item | null>(null);
   selectedItem$ = this._selectedItem.asObservable();
 
-
+  // private _itemChanged = new BehaviorSubject<boolean>(false);
+  // itemChanged$ = this._itemChanged.asObservable();
 
   public currentUploadFile: File | null = null;
 
-  constructor(
-    private http: HttpClient,
-    private notify: NotificationService,
-  ) { }
+  public requestInitialSelection$ = new Subject<void>();
 
-  updateView(key: keyof ViewConfig, visible: boolean) {
-    const currentItem = this.viewConfig.value;
-    this.viewConfig.next({ ...currentItem, [key]: visible });
+  private saveCallback?: () => Observable<any>;
+
+  private liveItemSource = new BehaviorSubject<LivePreviewData | null>(null);
+  liveItem$ = this.liveItemSource.asObservable();
+
+  // Das Dashboard nutzt das, um sich anzumelden
+  registerSaveCallback(callback: () => Observable<any>) {
+    this.saveCallback = callback;
   }
 
-  setSelectedItem(item: Item) {
+  // Der Guard nutzt das, um das Dashboard-Save auszuführen
+  executeDashboardSave(): Observable<any> {
+    return this.saveCallback ? this.saveCallback() : of({ success: true });
+  }
+
+  // Kanal für das Neuladen im Kiosk-Frontend
+  private reloadFrontendSource = new Subject<void>();
+  reloadFrontend$ = this.reloadFrontendSource.asObservable();
+
+  // Methode, die das Dashboard nach dem Speichern aufruft
+  triggerFrontendReload(): void {
+    this.reloadFrontendSource.next();
+  }
+
+  constructor(
+    private http: HttpClient,
+    private save: SaveStateService,
+    private configService: EditorConfigService,
+    private notify: NotificationService,
+  ) {
+    this.config$ = this.configService.viewConfig$;
+  }
+
+  // Methode, um das Item aus der Vorschau zu setzen
+  updateLiveItem(item: LivePreviewData | null): void {
+    if (!item) {
+      this.liveItemSource.next(null);
+      return;
+    }
+    this.liveItemSource.next({ ...item });
+  }
+
+  triggerInitialSelectionRequest() {
+    this.requestInitialSelection$.next();
+  }
+
+  setSelectedItem(item: Item | null) {
     this._selectedItem.next(item);
   }
 
-  // Der direkte Zugriff (für Methoden im Dashboard/Modal)
   get selectedItem(): Item | null {
     return this._selectedItem.value;
   }
 
-  listContents(current: boolean = false): Observable<Item[] | []> {
-    return this.http.get<Item[]>(`${environment.httpPath}list_items.php?current=${current}`).pipe(
+  listItems(): Observable<Item[] | []> {
+    return this.http.get<dbItem[]>(`${environment.httpPath}list_items.php`).pipe(
       map(items => items.map(item => ({
         ...item,
-        sichtbar: Number(item.sichtbar) === 1,
-        startDatum: item.startDatum ? new Date(item.startDatum) : null,
-        endDatum: item.endDatum ? new Date(item.endDatum) : null,
-        mediaType: this.detectType(item.hintergrund)
+        sichtbar: item.sichtbar === '1',
+        mediaType: detectMediaType(item.hintergrund)
       }))),
       tap(items => {
         if (items && items.length > 0) {
-          // Sobald die Daten da sind, nimm das erste
           this.setSelectedItem(items[0]);
         }
       })
     );
+  }
+
+  updateVisibility(sichtbar: boolean) {
+    const currentItem = this._selectedItem.value;
+
+    if (currentItem) {
+      this._selectedItem.next({
+        ...currentItem,
+        sichtbar,
+      });
+      this.save.addState(SaveState.ITEM);
+    }
   }
 
   updateBackground(url: string, type: 'pdf' | 'image' | 'color', file?: File) {
@@ -84,6 +127,7 @@ export class ItemService {
         hintergrund: url,
         mediaType: type
       });
+      this.save.addState(SaveState.ITEM);
     }
   }
 
@@ -93,8 +137,9 @@ export class ItemService {
     if (currentItem) {
       this._selectedItem.next({
         ...currentItem,
-        text: text,
+        text,
       });
+      this.save.addState(SaveState.ITEM);
     }
   }
 
@@ -106,49 +151,36 @@ export class ItemService {
         ...currentItem,
         hintergrund: color,
       });
-    }
-  }
-
-  updateSchedule(data: { sichtbar: boolean, intervall: string, startDatum: Date | null, endDatum: Date | null }) {
-    const currentItem = this.selectedItem;
-
-    if (currentItem) {
-      this._selectedItem.next({
-        ...currentItem,
-        sichtbar: data.sichtbar,
-        intervall: data.intervall,
-        startDatum: data.startDatum,
-        endDatum: data.endDatum
-      });
+      this.save.addState(SaveState.ITEM);
     }
   }
 
   saveItem(): Observable<any> {
     const item = this.selectedItem;
     if (!item) return of(null);
+    if (!this.save.hasState(SaveState.ITEM)) return of(null);
 
     const formData = new FormData();
-    formData.append('Id', item.id.toString());  // Wenn ID 0 ist, schicken wir sie als 0 (PHP erkennt das als Neu)
-    formData.append('Text', item.text || '');
+    formData.append('id', item.id.toString());  // Wenn ID 0 ist, schicken wir sie als 0 (PHP erkennt das als Neu)
 
-    if (item.startDatum instanceof Date) {
-      // formData.append('startDatum', item.startDatum.toISOString().split('T')[0]);
-      formData.append('Start', item.startDatum.toISOString());
-    }
-    if (item.endDatum instanceof Date) {
-      formData.append('Ende', item.endDatum.toISOString());
-    }
+    this.config$.subscribe(config => {
 
-    formData.append('Intervall', item.intervall || 'none');
-    formData.append('Sichtbar', item.sichtbar ? '1' : '0');
-    formData.append('Sortierung', `${item.sort}`);
+      formData.append('text', config.showText ? (item.text || '') : '');
 
-    // Die echte Datei hinzufügen (falls vorhanden)
-    if (this.currentUploadFile) {
-      formData.append('hintergrund_file', this.currentUploadFile, this.currentUploadFile.name);
-    } else {
-      formData.append('hintergrund_raw', item.hintergrund || '');
-    }
+      // 2. Datei- und Farb-Logik kombiniert
+      if (this.currentUploadFile && config.showFile) {
+        // Datei wird nur angehängt, wenn vorhanden UND erlaubt
+        formData.append('hintergrund_file', this.currentUploadFile, this.currentUploadFile.name);
+        formData.append('hintergrund_raw', ''); // Für PHP initialisieren
+      } else {
+        // Wenn keine Datei da ist (oder showFile aus ist), greift die Farblogik
+        formData.append('hintergrund_file', ''); // Für PHP initialisieren
+        formData.append('hintergrund_raw', config.showColor ? (item.hintergrund || '') : '');
+      }
+    });
+
+    formData.append('sichtbar', `${item.sichtbar ? 1 : 0}`);
+    formData.append('sortierung', `${item.sort ? item.sort : null}`);
 
     return this.http.post(`${environment.httpPath}save_item.php`, formData).pipe(
       tap((res: any) => {
@@ -159,10 +191,11 @@ export class ItemService {
           if (item.id === 0 && res.newId) {
             this._selectedItem.next({ ...item, id: res.newId, hintergrund: res.newPath || item.hintergrund });
           }
+          this.save.removeState(SaveState.ITEM);
         }
       }),
       catchError(err => {
-        console.error('Speicherfehler:', err);
+        console.error('Speicherfehler bei Items:', err);
         return of({ success: false });
       })
     );
@@ -174,7 +207,7 @@ export class ItemService {
     return this.http.post(`${environment.httpPath}delete_item.php`, body).pipe(
       map(() => true), // Wenn der Server 200 OK sendet, interpretieren wir es als Erfolg
       catchError(error => {
-        console.error('Fehler beim Löschen:', error);
+        console.error('Fehler bei deleteItem: ', error);
         return of(false); // Bei Fehlern (404, 500) geben wir false zurück
       })
     );

@@ -2,10 +2,10 @@
     <nz-header class="custom-header">
         TSG News - Dashboard
     </nz-header>
-    <nz-layout>
+    <nz-layout class="app-layout" cdkDropListGroup>
         <nz-sider [nzWidth]="'250px'">
             <div class="left-sider-content">
-                <ul nz-menu nzMode="inline" [style.marginBottom.px]="102">
+                <ul nz-menu nzMode="inline" [style.marginBottom.px]="16">
                     <li nz-menu-item routerLink="/dashboard/editor" routerLinkActive="ant-menu-item-selected"
                         [routerLinkActiveOptions]="{exact: true}">Editor</li>
                     <li nz-menu-item routerLink="/dashboard/sort" routerLinkActive="ant-menu-item-selected"
@@ -14,8 +14,18 @@
                         [routerLinkActiveOptions]="{exact: true}">Vorschau</li>
                 </ul>
 
+                <div style="height: 102px;">
+                    @if(currentRoute === 'preview'){
+                    Anzeigedauer
+                    <nz-input-number [(ngModel)]="previewDuration"
+                        (ngModelChange)="onDurationChange($event)" [nzMin]="1" [nzMax]="60" [nzStep]="1" nzSize="small"
+                        [nzFormatter]="formatterSeconds" [nzParser]="parserSeconds" style="width: 80px;">
+                    </nz-input-number>
+                    }
+                </div>
+
+                @if(currentRoute === 'editor') {
                 <div>
-                    @if(currentRoute === 'editor') {
                     <nz-space nzDirection="vertical">
                         <nz-space nzDirection="horizontal">
                             <button *nzSpaceItem class="editor-btn" nz-button nzType="default"
@@ -46,29 +56,129 @@
                         </nz-space>
                         <nz-space nzDirection="horizontal">
                             <button *nzSpaceItem class="editor-btn" nz-button nzType="default"
-                                (click)="showModal('schedule')">
-                                Planung & Status
+                                (click)="showModal('plan')">
+                                Zeit-Planung
                             </button>
-                            <nz-switch *nzSpaceItem [ngModel]="itemService.selectedItem?.sichtbar" [nzDisabled]="true"
-                                nz-tooltip="Aktivierungsstatus" [nzTooltipColor]="'gray'"
-                                [nzTooltipPlacement]="'right'" />
+                            <nz-switch *nzSpaceItem [ngModel]="(selectedItem$ | async)?.sichtbar"
+                                (ngModelChange)="changeVisibility($event)" nz-tooltip="Aktivierungsstatus setzen"
+                                [nzTooltipColor]="'gray'" [nzTooltipPlacement]="'right'" />
                         </nz-space>
                     </nz-space>
-                    }
                 </div>
+                }
+
+                @if(currentRoute === 'preview') {
+                <div style="width: 146px; margin: 0 auto;">
+                    <nz-space nzDirection="vertical">
+                        <nz-space nzDirection="horizontal">
+                            <!-- @if (liveItem && liveItem.statusAction) {
+                            <div nzSpaceItem style="font-size: 1.05em; color: #1890ff; font-weight: 500; text-align: left;">
+                                {{ liveItem.statusAction }}
+                            </div>
+                            } -->
+                            @if (liveItem && liveItem.statusAction) {
+                            <div nzSpaceItem style="font-size: 1.1em; font-weight: 500;">
+
+                                @if (liveItem.mode === 'specific') {
+                                <!-- Modus "Zeitpunkt wählen": Aktuell angezeigte News-ID ROT hervorheben -->
+                                @if (liveItem && liveItem.activeIds?.length) {
+                                <span style="color: #1890ff;">Aktive News: </span>
+                                @for (id of liveItem.activeIds; track id; let isLast = $last) {
+                                <span [style.color]="id === liveItem.id ? '#ff4d4f' : '#1890ff'">
+                                    #{{ id }}</span>@if (!isLast) {<span style="color: #1890ff;">, </span>}
+                                }
+                                } @else {
+                                <span style="color: #999;">Keine News aktiv</span>
+                                }
+                                } @else {
+                                <!-- Modus "Nur Umschaltpunkte" & "Alle Termine": Grün bei Einschalten, Rot bei Ausschalten, sonst Blau -->
+                                <span
+                                    [style.color]="liveItem.statusAction.includes('eingeschaltet') ? '#52c41a' : (liveItem.statusAction.includes('ausgeschaltet') ? '#ff4d4f' : '#1890ff')">
+                                    {{ liveItem.statusAction }}
+                                </span>
+                                }
+
+                            </div>
+                            }
+                        </nz-space>
+                        <nz-space nzDirection="horizontal">
+                            @if (liveItem && liveItem.currentTime){
+                            Datum: <strong>{{ liveItem.currentTime | date:'dd.MM.yyyy' }}</strong><br>
+                            } @else {
+                            ohne Datum (immer)
+                            }
+                        </nz-space>
+                        <nz-space nzDirection="horizontal">
+                            @if (liveItem && liveItem.currentTime){
+                            Startzeit: <strong>{{ liveItem.currentTime | date:'HH:mm' }} Uhr</strong>
+                            } @else {
+                            ohne Zeit (immer)
+                            }
+                        </nz-space>
+
+                        <nz-space nzDirection="vertical">
+                            <button nzSpaceItem nz-button [nzType]="activeMode === 'all' ? 'primary' : 'default'"
+                                (click)="onModeChange('all')">
+                                Alle Termine
+                            </button>
+                            <button nzSpaceItem nz-button [nzType]="activeMode === 'changes' ? 'primary' : 'default'"
+                                (click)="onModeChange('changes')">
+                                Nur Umschaltpunkte
+                            </button>
+                            <button nzSpaceItem nz-button [nzType]="activeMode === 'specific' ? 'primary' : 'default'"
+                                (click)="onModeChange('specific')">
+                                Zeitpunkt wählen
+                            </button>
+
+                            <!-- Zeitauswahl erscheint nur im Modus 'specific' -->
+                            @if (activeMode === 'specific') {
+                            <nz-date-picker nzSpaceItem nzShowTime nzFormat="dd.MM.yyyy HH:mm"
+                                [(ngModel)]="customPreviewDate" (ngModelChange)="onTimeChange($event)">
+                            </nz-date-picker>
+                            }
+
+                            <div nzSpaceItem
+                                style="display: flex; justify-content: center; gap: 12px; align-items: center;">
+                                <!-- Button 1: Rotation Start / Stopp (wechselt dynamisch das Icon) -->
+                                <button nz-button nzType="default" nzShape="circle" nzSize="large"
+                                    [nz-tooltip]="liveItem?.isPlaying ? 'Rotation pausieren' : 'Rotation starten'"
+                                    nzTooltipPlacement="bottom" (click)="planService.triggerTogglePlayback()">
+                                    <nz-icon [nzType]="liveItem?.isPlaying ? 'pause-circle' : 'play-circle'"
+                                        nzTheme="fill" style="font-size: 1.6em;" />
+                                </button>
+                                <!-- Button 2: Zum nächsten Zeitpunkt springen (deaktiviert im Modus 'specific') -->
+                                <button nz-button nzType="default" nzShape="circle" nzSize="large"
+                                    nz-tooltip="Nächster Zeitpunkt" [disabled]="activeMode === 'specific'"
+                                    nzTooltipPlacement="bottom" (click)="planService.triggerNextTimepoint()">
+                                    <nz-icon nzType="step-forward" style="font-size: 1.2em;" />
+                                </button>
+                                <!-- Button 1: Zurück zum Anfang (Reset) -->
+                                <button nz-button nzType="default" nzShape="circle" nzSize="large"
+                                    nz-tooltip="Zurück zum Anfang" nzTooltipPlacement="bottom"
+                                    [disabled]="activeMode === 'specific' || (liveItem?.itemIndex ?? 0) <= 1"
+                                    (click)="planService.triggerReset()">
+                                    <nz-icon nzType="reload" style="font-size: 1.1em;" />
+                                </button>
+                            </div>
+
+                        </nz-space>
+                    </nz-space>
+                </div>
+                }
 
                 <nz-space nzDirection="vertical"
                     style="position: absolute; bottom: 18px; width: calc(156px + 8px + 44px);">
-                    <button nz-button nzType="default" nzBlock [disabled]="isNew" (click)="createItem()">
+                    <button nz-button nzType="default" nzBlock [disabled]="isNew || currentRoute !== 'editor'"
+                        (click)="createItem()">
                         Neu
                     </button>
                     <button nz-button nzType="primary" nzBlock [nzLoading]="isSaving"
-                        [disabled]="!itemChanged || isSaving" (click)="saveItem()">
+                        [disabled]="stateService.hasState(SaveState.SAVED)" (click)="save().subscribe()">
                         Speichern
                     </button>
                     <button nz-button nzType="default" nzDanger nzBlock [nzLoading]="isDeleting"
-                        [disabled]="!removable || isDeleting" (click)="deleteItem()">
-                        Löschen
+                        [disabled]="!removable || isDeleting || currentRoute !== 'editor'" (click)="deleteItem()">
+                        {{killButtonText}}
                     </button>
                 </nz-space>
             </div>
@@ -82,11 +192,17 @@
 
         <nz-sider class="right-sider" [nzWidth]="rightSiderWidth + 'px'">
             <h4>gespeicherte News</h4>
-            <div class="thumbnail-list">
+            <div cdkDropList class="thumbnail-list" [cdkDropListData]="validItems" id="sider-list"
+                [cdkDropListConnectedTo]="['sort-list']">
+
                 @for (item of validItems; track item.id) {
-                <div [id]="'thumb-' + item.id" class="thumbnail" (click)="selectItem(item)"
-                    [class.selected]="(selectedItem | async)?.id === item.id"
-                    [style.background]="(item?.hintergrund | isColor) ? item?.hintergrund : 'none'">
+
+                <!-- (click)="stateService.hasState(SaveState.SAVED) && selectItem(item)" -->
+                <!-- [class.selected]="(selectedItem$ | async)?.id === item.id" -->
+                <div [id]="'thumb-' + item.id" class="thumbnail" cdkDrag [cdkDragData]="item"
+                    (click)="selectItem(item, $event)" [class.selected]="activeSelectedId === item.id"
+                    [style.background]="(item?.hintergrund | isColor) ? item?.hintergrund : 'none'"
+                    (cdkDragStarted)="onDragStarted()" (cdkDragEnded)="onDragEnded()">
 
                     @if (!(item.hintergrund | isColor)) {
                     @if (item.mediaType === 'image') {
@@ -96,8 +212,9 @@
                     <iframe [src]="item.hintergrund | imageUrl | safeUrl" class="fill"></iframe>
                     }
                     }
-                    <!-- Der Text liegt immer drüber -->
-                    <div class="message" [innerHTML]="item.text | safeHtml"></div>
+
+                    <div class="message preview-scaled" [innerHTML]="item.text | safeHtml"
+                        style="pointer-events: none;"></div>
                 </div>
                 }
             </div>

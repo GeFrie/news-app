@@ -1,1 +1,25 @@
-<p>preview works!</p>
+@if(currentItem){
+<div class="main display-container"
+  [style.background]="(currentItem.hintergrund | isColor) ? currentItem.hintergrund : 'gray'">
+  @if (currentItem && !(currentItem.hintergrund | isColor)) {
+  @if (currentItem.mediaType === 'image') {
+  <img [src]="currentItem.hintergrund | imageUrl" [attr.key]="currentItem.id" class="preview-image-css" decoding="async"
+    [alt]="`News #${currentItem.id}`">
+  }
+  @if (currentItem.mediaType === 'pdf') {
+  <iframe [src]="currentItem.hintergrund | imageUrl | safeUrl" class="fill"></iframe>
+  }
+  }
+  @if(currentItem.text && currentItem.text.trim().length > 0){
+  <div class="message news-content-output preview-scaled" [innerHTML]="currentItem.text | safeHtml"></div>
+  }
+</div>
+
+} @else if (!loading) {
+<div class="no-items">
+  <p>
+    <img [src]="'assets/images/logo_schrift.png'" width="70%">
+  </p>
+  <p>Hier gibt es gerade nichts zu sehen.</p>
+</div>
+}

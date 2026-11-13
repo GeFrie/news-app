@@ -1,41 +1,105 @@
-<div>
-    @if (type === 'text') {
-    <div class="editor">
-        <ngx-editor-menu [editor]="editor" [toolbar]="toolbar"></ngx-editor-menu>
-        <ngx-editor [editor]="editor" [(ngModel)]="editorText" (ngModelChange)="onTextChange($event)"
-            [placeholder]="'Text hier eingeben...'"></ngx-editor>
-        <h5 class="html-header">HTML Ausgabe</h5>
-        <div class="html"> {{editorText}} </div>
+@if (type === 'text') {
+
+<div class="editor-contrast-wrapper" [style.--editor-bg]="editorBgColor" [style.--editor-text]="editorDefaultTextColor">
+    <ngx-editor-menu [editor]="editor" [toolbar]="toolbar" [customMenuRef]="customMenu"
+        [colorPresets]="customColorPalette">
+    </ngx-editor-menu>
+    <ngx-editor class="preview-scaled" [editor]="editor" [ngModel]="editorText" (ngModelChange)="onTextChange($event)"
+        (click)="updateCurrentFontSize()" (keyup)="updateCurrentFontSize()"
+        [placeholder]="'Text hier eingeben...'"></ngx-editor>
+</div>
+
+<h4 class="html-header">
+    HTML Ausgabe
+    <!-- <button nz-button nzType="text" (click)="editHtml()" title="Weißt du, was du machst?">
+        <nz-icon nzType="edit" nzTheme="twotone" />
+    </button> -->
+</h4>
+
+<textarea nz-input class="html-input" [(ngModel)]="editorText" placeholder="Text als HTML" nzVariant="filled"
+    cdkTextareaAutosize cdkAutosizeMinRows="1" cdkAutosizeMaxRows="2" spellcheck="false">
+</textarea>
+
+<!-- 3. Das Custom-Template für die Schriftgrößen-Änderung -->
+<ng-template #customMenu>
+
+    <div class="NgxEditor__Seperator"></div>
+    <div class="NgxEditor__MenuItem">
+        <button type="button" class="toolbar-btn toolbar-paragraph" [class.editor-menu-active]="isParagraphActive()"
+            (click)="resetToParagraph($event)" [title]="isParagraphActive() ? '' : 'in Absatz umwandeln'">
+            <!-- <nz-icon style="margin-top: 4px;">
+                <svg xmlns="http://w3.org" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M15 4v16M11 4v16M19 4H9.5a4.5 4.5 0 0 0 0 9H15" />
+                </svg>
+            </nz-icon> -->
+            &#182;
+        </button>
     </div>
-    }
-    @if (type === 'file') {
-    <nz-upload nzType="drag" [nzMultiple]="false" [(nzFileList)]="fileList" [nzBeforeUpload]="beforeUpload"
-        [nzRemove]="handleRemove" nzAccept="image/*,.pdf">
-        <p class="ant-upload-drag-icon"><i nz-icon nzType="inbox"></i></p>
-        <p class="ant-upload-text">Klicken oder Datei hierher ziehen</p>
-        <p class="ant-upload-hint">maximale Datei-Größe: {{MAX_FILE_SIZE_MB}}MB</p>
-    </nz-upload>
 
-    @if (previewUrl) {
-    <div style="margin-top: 15px; text-align: center;">
-        <img [src]="previewUrl" style="max-height: 200px; border: 1px solid #eee;">
+    <div class="NgxEditor__Seperator"></div>
+
+    <div class="NgxEditor__MenuItem">
+        <nz-select style="width: 95px; margin: 0 6px;" nzSize="small" [ngModel]="currentFontSize"
+            (ngModelChange)="setExactFontSize($event)" (mousedown)="$event.stopPropagation()">
+
+            @for (size of fontSizes; track size) {
+            <nz-option [nzValue]="size" [nzLabel]="size"></nz-option>
+            }
+        </nz-select>
     </div>
-    }
-    }
 
-    @if (type === 'color') {
-    <div class="color-picker-container">
-        <nz-space nzDirection="horizontal">
-            <nz-space *nzSpaceItem nzDirection="vertical">
-                <div *nzSpaceItem class="preview-label">Hintergrund-Farbe</div>
-                <div *nzSpaceItem class="preview-box" [style.background]="selectedColor"></div>
+    <div class="NgxEditor__MenuItem">
+        <!-- Button Vergrößern -->
+        <button type="button" class="toolbar-btn" (click)="changeFontSize('increase')" title="Schrift vergrößern">
+            <!-- A⁺ -->
+            &#128474;
+        </button>
+    </div>
+    <div class="NgxEditor__MenuItem">
+        <!-- Button Verkleinern -->
+        <button type="button" class="toolbar-btn" (click)="changeFontSize('decrease')" title="Schrift verkleinern">
+            <!-- A⁻ -->
+            &#128475;
+        </button>
+    </div>
+    <!-- <div class="NgxEditor__MenuItem">
+        <span class="current-size-display">
+            Größe: <strong>{{ currentFontSize }}</strong>
+        </span>
+    </div> -->
 
-                <nz-select *nzSpaceItem nzShowSearch nzAllowClear nzAllowAddTag
-                    nzPlaceHolder="#Hex-Code eingeben oder Webfarbe wählen..." [(ngModel)]="selectedColor"
-                    (ngModelChange)="onWebColorSelect($event)"
-                    style="width: 275px; margin-top: 8px; margin-bottom: -12px;">
+</ng-template>
+}
 
-                    <!-- @for (color of webColors; track color.name) {
+@if (type === 'file') {
+<nz-upload nzType="drag" [nzMultiple]="false" [(nzFileList)]="fileList" [nzBeforeUpload]="beforeUpload"
+    [nzRemove]="handleRemove" nzAccept="image/*,.pdf">
+    <p class="ant-upload-drag-icon"><i nz-icon nzType="inbox"></i></p>
+    <p class="ant-upload-text">Klicken oder Datei hierher ziehen</p>
+    <p class="ant-upload-hint">maximale Datei-Größe: {{MAX_FILE_SIZE_MB}}MB</p>
+</nz-upload>
+
+@if (previewUrl) {
+<div style="margin-top: 15px; text-align: center;">
+    <img [src]="previewUrl" style="max-height: 200px; border: 1px solid #eee;">
+</div>
+}
+}
+
+@if (type === 'color') {
+<div class="color-picker-container">
+    <nz-space nzDirection="horizontal">
+        <nz-space *nzSpaceItem nzDirection="vertical">
+            <div *nzSpaceItem class="preview-label">Hintergrund-Farbe: {{selectedColor}}</div>
+            <div *nzSpaceItem class="preview-box" [style.background]="selectedColor">
+            </div>
+
+            <nz-select *nzSpaceItem nzShowSearch nzAllowClear nzAllowAddTag
+                nzPlaceHolder="#Hex-Code eingeben oder Webfarbe wählen..." [(ngModel)]="selectedColor"
+                (ngModelChange)="onWebColorSelect($event)" style="width: 275px; margin-top: 8px; margin-bottom: -12px;">
+
+                <!-- @for (color of webColors; track color.name) {
                     <nz-option nzCustomContent [nzLabel]="color.name" [nzValue]="color.hex">
                       <div style="display: flex; align-items: center; gap: 8px;">
                         <div [style.backgroundColor]="color.hex" 
@@ -46,67 +110,190 @@
                       </div>
                     </nz-option>
                   } -->
-                    @for (group of colorGroups; track group.label) {
-                    <nz-option-group [nzLabel]="group.label">
-                        @for (color of group.colors; track color.name) {
-                        <nz-option nzCustomContent [nzLabel]="color.name" [nzValue]="color.hex">
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <div [style.backgroundColor]="color.hex"
-                                    style="width: 14px; height: 14px; border: 1px solid #ccc;"></div>
-                                <span>{{ color.name }}</span>
-                                <small style="margin-left: auto; color: #999;">{{ color.hex }}</small>
-                            </div>
-                        </nz-option>
-                        }
-                    </nz-option-group>
+                @for (group of colorGroups; track group.label) {
+                <nz-option-group [nzLabel]="group.label">
+                    @for (color of group.colors; track color.name) {
+                    <nz-option nzCustomContent [nzLabel]="color.name" [nzValue]="color.hex">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div [style.backgroundColor]="color.hex"
+                                style="width: 14px; height: 14px; border: 1px solid #ccc;"></div>
+                            <span>{{ color.name }}</span>
+                            <small style="margin-left: auto; color: #999;">{{ color.hex }}</small>
+                        </div>
+                    </nz-option>
                     }
-                </nz-select>
-            </nz-space>
-
-            <input *nzSpaceItem [(colorPicker)]="selectedColor" [cpPosition]="'bottom'" [cpToggle]="true"
-                [cpDialogDisplay]="'inline'" [cpAlphaChannel]="'enabled'" [cpOutputFormat]="'rgba'"
-                (colorPickerChange)="onPickerChange($event)" [style.background]="selectedColor" style="display:none" />
-        </nz-space>
-    </div>
-    }
-
-    @if (nzData.type === 'schedule') {
-
-    <div nz-row [nzGutter]="[12, 64]">
-        <div nz-col class="gutter-row" [nzSpan]="7">
-            <div style="text-align: end;">Zeitraum (Beginn - Ende):</div>
-        </div>
-        <div nz-col class="gutter-row" [nzSpan]="17">
-            <nz-range-picker #datePicker [(ngModel)]="editDates" (ngModelChange)="disableOkBtn(false)"
-                [nzFormat]="'dd.MM.yyyy'" [nzShowTime]="false" [nzPlacement]="'bottomRight'" [nzStatus]="scheduleState"
-                [nzRenderExtraFooter]="footerTempl" style="width: 100%"></nz-range-picker>
-            <ng-template #footerTempl>
-                <div style="text-align: right; padding: 8px;">
-                    <button nz-button nzType="primary" nzSize="small" (click)="forceConfirm()">
-                        OK
-                    </button>
-                </div>
-            </ng-template>
-        </div>
-    </div>
-
-    <div nz-row [nzGutter]="[12, 64]" nzAlign="middle">
-        <div nz-col class="gutter-row" [nzSpan]="7">
-            <div style="text-align: end;">Wiederholung:</div>
-        </div>
-        <div nz-col class="gutter-row" [nzSpan]="9">
-            <nz-select [(ngModel)]="editIntervall" (ngModelChange)="disableOkBtn(false)" style="width: 90%">
-                <nz-option nzValue="none" nzLabel="Einmalig"></nz-option>
-                <nz-option nzValue="daily" nzLabel="Täglich"></nz-option>
-                <nz-option nzValue="weekly" nzLabel="Wöchentlich"></nz-option>
-                <nz-option nzValue="monthly" nzLabel="Monatlich (gleicher Tag)"></nz-option>
+                </nz-option-group>
+                }
             </nz-select>
-        </div>
-        <div nz-col class="gutter-row" [nzSpan]="8">
-            <label [style.marginRight.px]="16">Anzeige-Status:</label>
-            <nz-switch [(ngModel)]="editAktiv" (ngModelChange)="disableOkBtn(false)" nzCheckedChildren="Aktiv"
-                nzUnCheckedChildren="Inaktiv"></nz-switch>
-        </div>
-    </div>
+        </nz-space>
 
-    }
+        <input *nzSpaceItem [(colorPicker)]="selectedColor" [cpPosition]="'bottom'" [cpToggle]="true"
+            [cpDialogDisplay]="'inline'" [cpAlphaChannel]="'enabled'" [cpOutputFormat]="'rgba'"
+            (colorPickerChange)="onPickerChange($event)" [style.background]="selectedColor" style="display:none" />
+    </nz-space>
+</div>
+}
+
+@if (type === 'plan') {
+
+<div nz-row [nzGutter]="[12, 32]" nzAlign="middle" style="margin-bottom: 24px;">
+    <div nz-col class="gutter-row" [nzSpan]="24">
+
+        <div nz-row nzJustify="space-between" nzAlign="middle"
+            style="background-color: #fafafa; border: 1px solid #f0f0f0; border-bottom: none; padding: 10px 16px; border-radius: 4px 4px 0 0;">
+            <div nz-col>
+                <span style="font-weight: 500; color: rgba(0, 0, 0, 0.85); font-size: 14px;">
+                    Aktive Zeitpläne
+                </span>
+            </div>
+            <div nz-col>
+                <button nz-button nzType="primary" nzSize="small" (click)="createPlan()">
+                    <nz-icon nzType="plus" />
+                    Plan hinzufügen
+                </button>
+            </div>
+        </div>
+
+        <nz-table #smallTable nzSize="small" [nzData]="activePlans" [nzHideOnSinglePage]="true">
+            <thead>
+                <tr>
+                    <th>Nr.</th>
+                    <th>Beginn</th>
+                    <th>Ende</th>
+                    <th>Start</th>
+                    <th>Ende</th>
+                    <th>Wiederholung</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (data of smallTable.data; track $index) {
+                <tr (click)="selectRow(data)" [class.selected-row]="$index === planIndex" style="cursor: pointer;">
+                    <td>{{ data.sort }}</td>
+                    <td>{{ data.dates[0] | date: 'dd.MM.yyyy' }}</td>
+                    <td>{{ data.dates[1] | date: 'dd.MM.yyyy' }}</td>
+                    <td>{{ data.times[0] | date: 'HH:mm' }}</td>
+                    <td>{{ data.times[1] | date: 'HH:mm' }}</td>
+                    <td>{{ data.period ? intervalLookup[data.period] : '' }}</td>
+                    <td>
+                        <button nz-button [nzType]="'text'" class="delete-plan-btn"
+                            (click)="$event.stopPropagation(); removePlan(data.sort)">
+                            <nz-icon nzType="delete" nzTheme="twotone" />
+                        </button>
+                    </td>
+                </tr>
+                }
+            </tbody>
+        </nz-table>
+    </div>
+</div>
+
+<div nz-row [nzGutter]="[12, 64]" nzAlign="middle" style="margin-bottom: 16px;">
+    <div nz-col class="gutter-row" [nzSpan]="7">
+        <div style="text-align: end;">Zeitraum (Beginn - Ende):</div>
+    </div>
+    <div nz-col class="gutter-row" [nzSpan]="6">
+        <nz-date-picker #startDatePicker nzShowTime="false" nzFormat="dd.MM.yyyy" nzPlaceHolder="Start"
+            [(ngModel)]="dates[0]" (ngModelChange)="onDateChange()" nzAllowClear="false"
+            [nzDisabledDate]="disabledStartDate"
+            (nzOnOpenChange)="!$event ? (isEsc ? isEsc = false : endDatePicker.open()) : null"
+            (keydown.enter)="handleDateEnter(0, $any($event))" (keydown.escape)="isEsc = true" />
+    </div>
+    <div nz-col class="gutter-row" [nzSpan]="6">
+        <nz-date-picker #endDatePicker nzShowTime="false" nzFormat="dd.MM.yyyy" nzPlaceHolder="Ende"
+            [(ngModel)]="dates[1]" (ngModelChange)="onDateChange()" [nzDisabledDate]="disabledEndDate"
+            (keydown.enter)="handleDateEnter(1, $any($event))" />
+    </div>
+    <div nz-col class="gutter-row" [nzSpan]="5">
+        <button nz-button class="btn-highlight" (click)="deleteDates()">
+            immer anzeigen
+        </button>
+    </div>
+</div>
+
+<div nz-row [nzGutter]="[12, 64]" nzAlign="middle" style="margin-bottom: 16px;">
+    <div nz-col class="gutter-row" [nzSpan]="7">
+        <div style="text-align: end;">Uhrzeit (Beginn - Ende):</div>
+    </div>
+    <div nz-col class="gutter-row" [nzSpan]="6">
+        <nz-time-picker nzNeedConfirm [(ngModel)]="times[0]" (ngModelChange)="setTime(0)" nzFormat="HH:mm"
+            (keydown.enter)="handleTimeEnter(0, $any($event))" />
+    </div>
+    <div nz-col class="gutter-row" [nzSpan]="6">
+        <nz-time-picker nzNeedConfirm [(ngModel)]="times[1]" (ngModelChange)="setTime(1)" nzFormat="HH:mm"
+            (keydown.enter)="handleTimeEnter(1, $any($event))" />
+    </div>
+    <div nz-col class="gutter-row" [nzSpan]="5">
+        <button nz-button class="btn-highlight" (click)=" deleteTimes()">
+            immer anzeigen
+        </button>
+    </div>
+</div>
+
+<div nz-row [nzGutter]="[12, 64]" nzAlign="middle"
+    [style.marginBottom.px]="(period.includes('week') || period.startsWith('month') || period.startsWith('defined')) ? 16 : 0">
+    <div nz-col class="gutter-row" [nzSpan]="7">
+        <div style="text-align: end;">Wiederholung:</div>
+    </div>
+    <div nz-col class="gutter-row" [nzSpan]="9">
+        <nz-select [(ngModel)]="period" (ngModelChange)="setInterval($event)" style="width: 90%">
+            @for (option of intervalOptions; track option.value) {
+            <nz-option [nzValue]="option.value" [nzLabel]="option.label"
+                [nzDisabled]="disableType.includes(option.value)"></nz-option>
+            }
+        </nz-select>
+    </div>
+    <!-- <div nz-col class="gutter-row" [nzSpan]="8">
+            <label [style.marginRight.px]="16">Anzeige-Status:</label>
+            <nz-switch [(ngModel)]="isActive" (ngModelChange)="disableOkBtn(false)" nzCheckedChildren="Aktiv"
+                nzUnCheckedChildren="Inaktiv">
+            </nz-switch>
+        </div> -->
+</div>
+
+@if(period.includes('week') || period.startsWith('month') || period.startsWith('defined')){
+
+<div nz-row [nzGutter]="[12, 18]" nzAlign="middle"
+    [style.visibility]="period.includes('week') || period.startsWith('month') || period.startsWith('defined') ? 'visible' : 'hidden'">
+    <div nz-col class="gutter-row" [nzSpan]="7" [style.alignSelf]="period === 'weekly' ? 'center' : 'flex-start'"
+        [style.marginTop]="period === 'weekly' ? '-8px' : '6px'">
+
+        @if(period.endsWith('weekly')){
+        <div style="text-align: end;">Wochentag:</div>
+        }
+        @if(period.endsWith('weekday')){
+        <div style="text-align: end">Wochentag:</div>
+        }
+        @if(period==='monthly_date'){
+        <div style="text-align: end">Datum:</div>
+        }
+        @if(period==='defined_date'){
+        <div style="text-align: end">Datum festlegen:</div>
+        }
+    </div>
+    <div nz-col class="gutter-row" [nzSpan]="17">
+        @for(index of getRepeatIndexes(); track index) {
+        @if(period.includes('week')){
+        <div nz-button-group [style.marginBottom]="'6px'">
+            @for(day of weekDays; track day.value){
+            <button nz-button [nzType]="isDaySelected(day.value, index) ? 'primary' : 'default'" [nzShape]="'round'"
+                (click)="toggleDay(day.value, index)" type="button">
+                {{ day.label }}
+            </button>
+            }
+        </div>
+        } @else if(period==='monthly_date'){
+        <div class="monthdays-container">
+            @for(date of monthDates; track date){
+            <button nz-button [nzType]="isDaySelected(date, index) ? 'primary' : 'default'" [nzShape]="'round'"
+                (click)="toggleDay(date, index)" type="button">
+                {{ date }}
+            </button>
+            }
+        </div>
+        }
+        }
+    </div>
+</div>
+}
+}

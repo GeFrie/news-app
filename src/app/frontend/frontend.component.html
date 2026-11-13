@@ -1,12 +1,54 @@
-@for(v of convert.getArray(itemCountV); track $index){
-  <div nz-row [nzAlign]="'middle'" [style.height.%]="100 / itemCountV">
-    @for(h of convert.getArray(itemCountH); track $index){
-      <div nz-col [nzSpan]="24 / itemCountH" [style.height.%]="100">
-        <!-- <div [class]="['box', h === 0 ? 'left' : '']"> -->
-        <div [class]="['box']">
-          Zeile {{v}}, Spalte {{h}}
-        </div>
-      </div>
-    }
+<!-- @for(v of convertArray(itemCountV); track $index){
+<div nz-row [nzAlign]="'middle'" [style.height.%]="100 / itemCountV">
+  @for(h of convertArray(itemCountH); track $index){
+  <div nz-col [nzSpan]="24 / itemCountH" [style.height.%]="100">
+    <div [class]="['box']">
+      Zeile {{v}}, Spalte {{h}}
+    </div>
   </div>
+  }
+</div>
+} -->
+
+<!-- 
+1. Das Angular-Versions-Upgrade: Sobald Ihr gesamtes Projekt (inklusive Angular CLI, Core und Compiler) 
+   geschlossen auf die neueste Version aktualisiert wird, funktioniert der offizielle Weg über 
+   @angular/animations mit :enter und :leave aus dem Stand und ohne Vite-Abstürze.
+   
+2. Die CSS View Transitions API: Ein moderner, nativer Browser-Standard (document.startViewTransition), 
+   der genau für Kiosk-Systeme entwickelt wurde, um zwei DOM-Zustände vollautomatisch und 
+   ohne extra HTML-Layer ineinander überzublenden. 
+-->
+
+@if (osdMessage) {
+<div
+  style="position: fixed; bottom: 24px; right: 24px; background: rgba(0, 0, 0, 0.75); color: #fff; padding: 10px 18px; border-radius: 6px; font-size: 18px; z-index: 9999;">
+  {{ osdMessage }}
+</div>
+}
+
+@if(currentItem){
+<div class="main display-container"
+  [style.background]="(currentItem.hintergrund | isColor) ? currentItem.hintergrund : 'gray'">
+  @if (currentItem && !(currentItem.hintergrund | isColor)) {
+  @if (currentItem.mediaType === 'image') {
+  <img [src]="currentItem.hintergrund | imageUrl" [attr.key]="currentItem.id" class="preview-image-css" decoding="async"
+    [alt]="`News #${currentItem.id}`">
+  }
+  @if (currentItem.mediaType === 'pdf') {
+  <iframe [src]="currentItem.hintergrund | imageUrl | safeUrl" class="fill"></iframe>
+  }
+  }
+  @if(currentItem.text && currentItem.text.trim().length > 0){
+  <div class="message news-content-output" [innerHTML]="currentItem.text | safeHtml"></div>
+  }
+</div>
+
+} @else if (!loading) {
+<div class="no-items">
+  <p>
+    <img [src]="'assets/images/logo_schrift.png'" width="70%">
+  </p>
+  <p>Hier gibt es gerade nichts zu sehen.</p>
+</div>
 }
