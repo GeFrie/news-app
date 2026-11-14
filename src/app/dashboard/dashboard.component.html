@@ -14,13 +14,21 @@
                         [routerLinkActiveOptions]="{exact: true}">Vorschau</li>
                 </ul>
 
-                <div style="height: 102px;">
+                <div style="height: 102px; padding: 12px 16px;">
                     @if(currentRoute === 'preview'){
-                    Anzeigedauer
-                    <nz-input-number [(ngModel)]="previewDuration"
-                        (ngModelChange)="onDurationChange($event)" [nzMin]="1" [nzMax]="60" [nzStep]="1" nzSize="small"
-                        [nzFormatter]="formatterSeconds" [nzParser]="parserSeconds" style="width: 80px;">
-                    </nz-input-number>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span>Anzeigedauer</span>
+
+                        <nz-input-number [(ngModel)]="previewDuration" (ngModelChange)="onDurationChange($event)"
+                            [nzMin]="2" [nzMax]="60" [nzStep]="1" nzSize="small" [nzFormatter]="formatterSeconds"
+                            [nzParser]="parserSeconds" style="width: 74px;">
+                        </nz-input-number>
+
+                        <nz-icon nzType="info-circle" nzTheme="twotone"
+                            nz-tooltip="Anzeigedauer nur für die Vorschau (wird nicht gespeichert)"
+                            [nzTooltipColor]="'gray'" nzTooltipPlacement="right"
+                            style="cursor: help; font-size: 14px; flex-shrink: 0; margin-top: -16px;" />
+                    </div>
                     }
                 </div>
 
@@ -59,7 +67,8 @@
                                 (click)="showModal('plan')">
                                 Zeit-Planung
                             </button>
-                            <nz-switch *nzSpaceItem [ngModel]="$safeNavigationMigration((selectedItem$ | async)?.sichtbar)"
+                            <nz-switch *nzSpaceItem
+                                [ngModel]="$safeNavigationMigration((selectedItem$ | async)?.sichtbar)"
                                 (ngModelChange)="changeVisibility($event)" nz-tooltip="Aktivierungsstatus setzen"
                                 [nzTooltipColor]="'gray'" [nzTooltipPlacement]="'right'" />
                         </nz-space>
@@ -71,11 +80,6 @@
                 <div style="width: 146px; margin: 0 auto;">
                     <nz-space nzDirection="vertical">
                         <nz-space nzDirection="horizontal">
-                            <!-- @if (liveItem && liveItem.statusAction) {
-                            <div nzSpaceItem style="font-size: 1.05em; color: #1890ff; font-weight: 500; text-align: left;">
-                                {{ liveItem.statusAction }}
-                            </div>
-                            } -->
                             @if (liveItem && liveItem.statusAction) {
                             <div nzSpaceItem style="font-size: 1.1em; font-weight: 500;">
 
@@ -168,14 +172,25 @@
 
                 <nz-space nzDirection="vertical"
                     style="position: absolute; bottom: 18px; width: calc(156px + 8px + 44px);">
+
+                    <nz-input-number  class="bold-number" [style.width.%]="100" [(ngModel)]="kioskDuration"
+                        (ngModelChange)="onKioskDurationChange($event)" [nzMin]="2" [nzMax]="60" [nzStep]="1"
+                        nzSize="default" [nzFormatter]="formatterSeconds" [nzParser]="parserSeconds"
+                        nz-tooltip="Anzeigedauer auf dem Kiosk-Gerät (wird gespeichert)"
+                        [nzTooltipColor]="'gray'" nzTooltipPlacement="right">
+                        <span nzInputAddonBefore style="cursor: default;">Kiosk-Anzeige</span>
+                    </nz-input-number>
+
                     <button nz-button nzType="default" nzBlock [disabled]="isNew || currentRoute !== 'editor'"
                         (click)="createItem()">
                         Neu
                     </button>
+
                     <button nz-button nzType="primary" nzBlock [nzLoading]="isSaving"
                         [disabled]="stateService.hasState(SaveState.SAVED)" (click)="save().subscribe()">
                         Speichern
                     </button>
+
                     <button nz-button nzType="default" nzDanger nzBlock [nzLoading]="isDeleting"
                         [disabled]="!removable || isDeleting || currentRoute !== 'editor'" (click)="deleteItem()">
                         {{killButtonText}}

@@ -28,7 +28,7 @@ export class SortService {
   }
 
   getSortedItems(): Observable<Item[] | []> {
-    return this.http.get<dbItem[]>(`${environment.httpPath}get_sorted.php`).pipe(
+    return this.http.get<dbItem[]>(`${environment.apiUrl}get_sorted.php`).pipe(
       map(items => items.map(item => ({
         ...item,
         sichtbar: item.sichtbar === '1',
@@ -56,7 +56,7 @@ export class SortService {
     const formData = new FormData();
     formData.append('sortData', JSON.stringify(payload));
 
-    return this.http.post(`${environment.httpPath}save_sort.php`, formData).pipe(
+    return this.http.post(`${environment.apiUrl}save_sort.php`, formData).pipe(
       tap((res: any) => {
         if (res?.success) {
           this.save.removeState(SaveState.SORT);

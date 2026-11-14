@@ -78,3 +78,7 @@ nz-content {
   cursor: not-allowed !important; 
 }
 
+:host ::ng-deep .bold-number .ant-input-number-input {
+  font-weight: 500;
+}
+

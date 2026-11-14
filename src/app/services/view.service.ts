@@ -16,7 +16,7 @@ export class ViewService {
   ) { }
 
   getItems(): Observable<Item[] | []> {
-    return this.http.get<dbItem[]>(`${environment.httpPath}get_valid_items.php`).pipe(
+    return this.http.get<dbItem[]>(`${environment.apiUrl}get_valid_items.php`).pipe(
       map(items => items.map(item => ({
         ...item,
         id: Number(item.id),

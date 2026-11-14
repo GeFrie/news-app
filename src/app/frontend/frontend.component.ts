@@ -1,7 +1,7 @@
-import { Component, OnInit, OnDestroy, HostListener, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener, ChangeDetectionStrategy, NgZone } from '@angular/core';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { ArrayConversion } from '../shared/utils/array-conversion.utils';
-import { map, mergeAll, of, Subscription, tap } from 'rxjs';
+import { forkJoin, map, mergeAll, of, Subscription, switchMap, tap } from 'rxjs';
 import { Item, CalcDate } from '../interfaces/item';
 import { ViewService } from '../services/view.service';
 import { PlanService } from '../services/plan.service';
@@ -12,7 +12,6 @@ import { SafeUrlPipe } from '../pipes/safe-url.pipe';
 import { SafeHtmlPipe } from '../pipes/safe-html.pipe';
 import { EditorConfigService } from '../services/editor.config.service';
 import { ItemService } from '../services/item.service';
-import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-frontend',
@@ -92,10 +91,14 @@ export class FrontendComponent implements OnInit, OnDestroy {
     }
   }
 
+  private syncChannel: BroadcastChannel | null = null;
+  private updatePollTimer: any;
+
   convertArray = ArrayConversion;
   itemCountH = 1;
   itemCountV = 1;
   subscriptions: Subscription[] = [];
+  private dataSub?: Subscription;
 
   loading: boolean = true;
 
@@ -119,7 +122,7 @@ export class FrontendComponent implements OnInit, OnDestroy {
     private planService: PlanService,
     private itemService: ItemService,
     private configService: EditorConfigService,
-    private http: HttpClient,
+    private ngZone: NgZone
   ) { }
 
   ngOnInit(): void {
@@ -148,12 +151,63 @@ export class FrontendComponent implements OnInit, OnDestroy {
     // Auf das Speicher-Event aus dem Dashboard hören
     this.subscriptions.push(
       this.itemService.reloadFrontend$.subscribe(() => {
-        this.loadDataAndStart();
+        // 1. Zuerst die neue Kiosk-Dauer aus config.json holen!
+        this.configService.getConfig().subscribe((config) => {
+          if (config['displayDurationSeconds']) {
+            this.displayDuration = config['displayDurationSeconds'] * 1000;
+          }
+          // 2. Danach Daten neu laden und Rotation mit der neuen Dauer starten
+          this.loadDataAndStart();
+        });
       })
     );
 
-    // Datenstrom für Items und den flachen PHP-Planer
-    this.loadDataAndStart();
+    // Tab-übergreifender Sync
+    this.syncChannel = new BroadcastChannel('tsg_news_sync');
+    this.syncChannel.onmessage = (event) => {
+      if (event.data === 'RELOAD') {
+        this.ngZone.run(() => {
+          this.loadDataAndStart();
+        });
+      }
+    };
+
+    // Hintergrund-Check alle 30 Sekunden (für getrennte Kiosk-Geräte)
+    this.updatePollTimer = setInterval(() => {
+      this.checkForServerUpdates();
+    }, 30000);
+  }
+
+  /**
+   * Prüft im Hintergrund alle 30 Sekunden, ob sich auf dem Server Items geändert haben
+   */
+  private checkForServerUpdates(): void {
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    this.viewService.getItems().pipe(
+      switchMap((latestItems) => {
+        const itemIds = latestItems.map(item => item.id);
+        const plans$ = itemIds.length > 0
+          ? this.planService.getPreviewPlans(itemIds, todayStr)
+          : of([]);
+
+        return forkJoin({
+          items: of(latestItems),
+          dates: plans$
+        });
+      })
+    ).subscribe({
+      next: ({ items, dates }) => {
+        const itemsChanged = JSON.stringify(items) !== JSON.stringify(this.items);
+        const datesChanged = JSON.stringify(dates) !== JSON.stringify(this.calcDates);
+
+        if (itemsChanged || datesChanged) {
+          console.log('Netzwerk-Änderung erkannt (Items oder Zeitpläne) -> Kiosk wird aktualisiert...');
+          this.loadDataAndStart();
+        }
+      },
+      error: (err) => console.error('Fehler beim Hintergrund-Update:', err)
+    });
   }
 
   private stopAllTimers(): void {
@@ -207,7 +261,9 @@ export class FrontendComponent implements OnInit, OnDestroy {
 
     // Speichern über Ihren EditorConfigService (mit der echten Server-URL aus environment)
     this.configService.saveDisplayDuration(newSeconds).subscribe({
-      next: () => console.log('Anzeigedauer gespeichert:', newSeconds),
+      next: () => {
+        this.itemService.triggerFrontendReload(); // Meldet neue Zeit ans Dashboard!
+      },
       error: (err) => console.error('Fehler beim Speichern:', err)
     });
   }
@@ -224,41 +280,38 @@ export class FrontendComponent implements OnInit, OnDestroy {
   }
 
   loadDataAndStart(): void {
-    this.subscriptions.push(
-      this.viewService.getItems().pipe(
-        tap((items) => {
-          this.items = items;
-        }),
-        map((items) => {
-          const itemIds: number[] = items.map(item => item.id);
-          if (itemIds.length === 0) {
-            return of([]);
-          }
-          // Ruft Ihre aktualisierte PHP-API auf, die das fertige Array liefert
-          // const todayStr = this.getLocalDateIsoString(new Date()).split('T')[0];
-          const todayStr = new Date().toDateString();
-          return this.planService.getPreviewPlans(itemIds, todayStr);
-        }),
-        mergeAll()
-      ).subscribe({
-        next: (dates) => {
-          // Zuweisung des direkt vom PHP generierten, flachen Arrays
-          this.calcDates = dates;
+    // Vorherige Lade-Subscription sauber beenden, bevor neu geladen wird
+    if (this.dataSub) {
+      this.dataSub.unsubscribe();
+    }
 
-          this.updateValidItems();
-          this.startMinuteSync();
+    const todayStr = new Date().toISOString().split('T')[0];
 
-          // VORAB-LADEN STARTEN: Erst Bilder laden, dann die Anzeige sichtbar machen
-          this.preloadAllImages().then(() => {
-            this.loading = false;
-            this.startRotation();
-          });
-        },
-        error: (err) => {
-          console.error('Fehler im Datenstrom:', err);
+    this.dataSub = this.viewService.getItems().pipe(
+      tap((items) => {
+        this.items = items;
+      }),
+      map((items) => {
+        const itemIds: number[] = items.map(item => item.id);
+        if (itemIds.length === 0) {
+          return of([]);
         }
-      })
-    );
+        return this.planService.getPreviewPlans(itemIds, todayStr);
+      }),
+      mergeAll()
+    ).subscribe({
+      next: (dates) => {
+        this.calcDates = dates;
+        this.updateValidItems();
+        this.startMinuteSync();
+
+        this.preloadAllImages().then(() => {
+          this.loading = false;
+          this.startRotation(); // Startet garantiert mit this.displayDuration (6000ms)
+        });
+      },
+      error: (err) => console.error('Fehler im Datenstrom:', err)
+    });
   }
 
   /**
@@ -375,9 +428,7 @@ export class FrontendComponent implements OnInit, OnDestroy {
   }
 
   private startRotation(): void {
-    if (this.rotationTimer) {
-      clearInterval(this.rotationTimer);
-    }
+    this.stopAllTimers();
 
     this.showNextItem();
 
@@ -407,5 +458,7 @@ export class FrontendComponent implements OnInit, OnDestroy {
     if (this.rotationTimer) clearInterval(this.rotationTimer);
     if (this.minuteCheckTimeout) clearTimeout(this.minuteCheckTimeout);
     if (this.resumeTimeout) clearTimeout(this.resumeTimeout);
+    if (this.updatePollTimer) clearInterval(this.updatePollTimer);
+    if (this.syncChannel) this.syncChannel.close();
   }
 }

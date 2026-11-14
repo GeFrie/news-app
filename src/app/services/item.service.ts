@@ -1,6 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
-import { NotificationService } from './notification.service';
+import { Injectable, NgZone } from '@angular/core';
 import { BehaviorSubject, catchError, map, Observable, of, Subject, take, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Item, dbItem } from '../interfaces/item';
@@ -27,9 +26,6 @@ export class ItemService {
   private _selectedItem = new BehaviorSubject<Item | null>(null);
   selectedItem$ = this._selectedItem.asObservable();
 
-  // private _itemChanged = new BehaviorSubject<boolean>(false);
-  // itemChanged$ = this._itemChanged.asObservable();
-
   public currentUploadFile: File | null = null;
 
   public requestInitialSelection$ = new Subject<void>();
@@ -39,6 +35,37 @@ export class ItemService {
   private liveItemSource = new BehaviorSubject<LivePreviewData | null>(null);
   liveItem$ = this.liveItemSource.asObservable();
 
+
+  // Kanal für das Neuladen im Kiosk-Frontend
+  private reloadFrontendSource = new Subject<void>();
+  reloadFrontend$ = this.reloadFrontendSource.asObservable();
+
+  private syncChannel = new BroadcastChannel('tsg_news_sync');
+
+  constructor(
+    private http: HttpClient,
+    private save: SaveStateService,
+    private configService: EditorConfigService,
+    private ngZone: NgZone
+  ) {
+    this.config$ = this.configService.viewConfig$;
+    
+    // Lauscht auf Nachrichten aus ANDEREN Browser-Tabs und holt sie direkt in die Angular-Zone!
+    this.syncChannel.onmessage = (event) => {
+      if (event.data === 'RELOAD') {
+        this.ngZone.run(() => {
+          this.reloadFrontendSource.next();
+        });
+      }
+    };
+  }
+
+  // Methode, die das Dashboard nach dem Speichern aufruft
+  triggerFrontendReload(): void {
+    this.reloadFrontendSource.next();
+    this.syncChannel.postMessage('RELOAD'); // <-- Schickt das Signal jetzt sofort an den zweiten Tab!
+  }
+
   // Das Dashboard nutzt das, um sich anzumelden
   registerSaveCallback(callback: () => Observable<any>) {
     this.saveCallback = callback;
@@ -47,24 +74,6 @@ export class ItemService {
   // Der Guard nutzt das, um das Dashboard-Save auszuführen
   executeDashboardSave(): Observable<any> {
     return this.saveCallback ? this.saveCallback() : of({ success: true });
-  }
-
-  // Kanal für das Neuladen im Kiosk-Frontend
-  private reloadFrontendSource = new Subject<void>();
-  reloadFrontend$ = this.reloadFrontendSource.asObservable();
-
-  // Methode, die das Dashboard nach dem Speichern aufruft
-  triggerFrontendReload(): void {
-    this.reloadFrontendSource.next();
-  }
-
-  constructor(
-    private http: HttpClient,
-    private save: SaveStateService,
-    private configService: EditorConfigService,
-    private notify: NotificationService,
-  ) {
-    this.config$ = this.configService.viewConfig$;
   }
 
   // Methode, um das Item aus der Vorschau zu setzen
@@ -89,7 +98,7 @@ export class ItemService {
   }
 
   listItems(): Observable<Item[] | []> {
-    return this.http.get<dbItem[]>(`${environment.httpPath}list_items.php`).pipe(
+    return this.http.get<dbItem[]>(`${environment.apiUrl}list_items.php`).pipe(
       map(items => items.map(item => ({
         ...item,
         sichtbar: item.sichtbar === '1',
@@ -182,7 +191,7 @@ export class ItemService {
     formData.append('sichtbar', `${item.sichtbar ? 1 : 0}`);
     formData.append('sortierung', `${item.sort ? item.sort : null}`);
 
-    return this.http.post(`${environment.httpPath}save_item.php`, formData).pipe(
+    return this.http.post(`${environment.apiUrl}save_item.php`, formData).pipe(
       tap((res: any) => {
         if (res?.success) {
           // Nach Erfolg: Datei-Zwischenspeicher leeren
@@ -204,7 +213,7 @@ export class ItemService {
   deleteItem(id: number) {
     const body = { id: id };
 
-    return this.http.post(`${environment.httpPath}delete_item.php`, body).pipe(
+    return this.http.post(`${environment.apiUrl}delete_item.php`, body).pipe(
       map(() => true), // Wenn der Server 200 OK sendet, interpretieren wir es als Erfolg
       catchError(error => {
         console.error('Fehler bei deleteItem: ', error);

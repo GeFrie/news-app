@@ -16,26 +16,59 @@
     will-change: background-color;
 }
 
-.preview-image-css {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover; // Sorgt dafür, dass das Bild ohne Verzerrung den Raum füllt
-    z-index: 1; // Liegt ganz unten
-    will-change: opacity;
-    animation: crossFade 0.8s ease-in-out forwards;
+.stage-wrapper {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #000; // Verhindert helles Aufblitzen beim ersten Laden
 }
 
-@keyframes crossFade {
-    from {
-        opacity: 0;
-    }
+.slide-layer {
+  position: absolute !important;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
 
-    to {
-        opacity: 1;
-    }
+/* Einblend-Animation (Enter) - 1 Sekunde */
+.fade-in {
+  animation: kFadeIn 1s ease-in-out forwards;
+  z-index: 2;
+}
+
+/* Ausblend-Animation (Leave) - 1 Sekunde */
+.fade-out {
+  animation: kFadeOut 1s ease-in-out forwards;
+  z-index: 1;
+}
+
+@keyframes kFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes kFadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.preview-image-css {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
 }
 
 .no-items {

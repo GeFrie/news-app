@@ -26,12 +26,11 @@ export class EditorConfigService {
   }
 
   getConfig(): Observable<Record<string, any>> {
-    return this.http.get<Record<string, any>>(`assets/config.json?t=${Date.now()}`);
+    return this.http.get<Record<string, any>>(`${environment.configUrl}?t=${Date.now()}`);
   }
 
   saveDisplayDuration(seconds: number): Observable<any> {
-    // Nutzt dieselbe Basis-URL wie Ihre anderen PHP-Skripte!
-    return this.http.post(`${environment.httpPath}/save_config.php`, {
+    return this.http.post(`${environment.apiUrl}/save_config.php`, {
       displayDurationSeconds: seconds
     });
   }

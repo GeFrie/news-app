@@ -76,7 +76,7 @@ export class PlanService {
   }
 
   getPlans(ids: number[]): Observable<Plan[] | []> {
-    return this.http.post<dbPlan[]>(`${environment.httpPath}get_plans.php`, { ids }).pipe(
+    return this.http.post<dbPlan[]>(`${environment.apiUrl}get_plans.php`, { ids }).pipe(
       map(values => values.map(value => {
         const validInterval = value.period && environment.VALID_INTERVALS.has(value.period)
           ? (value.period as IntervalType)
@@ -122,7 +122,7 @@ export class PlanService {
       payload.end_date = today;
     }
 
-    return this.http.post<CalcDate[]>(`${environment.httpPath}get_plans_calc.php`, payload).pipe(
+    return this.http.post<CalcDate[]>(`${environment.apiUrl}get_plans_calc.php`, payload).pipe(
       // map(values => values.map(value => ({
       //   ...value
       // })))
@@ -168,7 +168,7 @@ export class PlanService {
 
     formData.append('plans', JSON.stringify(formatedPlans));
 
-    return this.http.post(`${environment.httpPath}save_plans.php`, formData).pipe(
+    return this.http.post(`${environment.apiUrl}save_plans.php`, formData).pipe(
       tap((res: any) => {
         if (res?.success) {
           this.save.removeState(SaveState.PLAN);

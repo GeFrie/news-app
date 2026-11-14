@@ -8,7 +8,7 @@ import { environment } from '../../environments/environment';
 
 export class ImageUrlPipe implements PipeTransform {
 
-  private readonly baseUrl = environment.httpPath;
+  private readonly baseUrl = environment.apiUrl;
   private readonly imageDir = environment.imageDir;
   private readonly fallback = 'assets/images/placeholder.png';
 

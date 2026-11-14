@@ -15,6 +15,7 @@ import localeDe from '@angular/common/locales/de';
 import { LOCALE_ID } from '@angular/core';
 
 import { NZ_DATE_CONFIG, NzDateConfig } from 'ng-zorro-antd/i18n';
+import { provideNzDateFnsAdapter } from 'ng-zorro-antd/core/time';
 
 registerLocaleData(de);
 registerLocaleData(localeDe);
@@ -30,6 +31,7 @@ export const appConfig: ApplicationConfig = {
     provideNzI18n(de_DE),
     { provide: LOCALE_ID, useValue: 'de-DE' },
     { provide: NZ_DATE_CONFIG, useValue: dateConfig },
+    provideNzDateFnsAdapter(),
     importProvidersFrom(FormsModule),
     provideHttpClient(withXhr()),
     importProvidersFrom(
@@ -85,6 +87,6 @@ export const appConfig: ApplicationConfig = {
         },
       }),
     ),
-    importProvidersFrom(NzModalModule)
+    importProvidersFrom(NzModalModule), provideNzDateFnsAdapter()
   ]
 };

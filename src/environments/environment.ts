@@ -1,7 +1,8 @@
 import { Toolbar } from 'ngx-editor';
 
 export const environment = {
-     httpPath: 'htdocs/',
+     apiUrl: 'htdocs/',
+     configUrl:'assets/config.json',
      imageDir: 'uploads/',
      VALID_INTERVALS: new Set([
           'none',

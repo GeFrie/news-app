@@ -1,7 +1,8 @@
 import { Toolbar } from 'ngx-editor';
 
 export const environment = {
-     httpPath: 'http://localhost/tsg-news/',
+     apiUrl: 'http://localhost/tsg-news/',
+     configUrl:'http://localhost/tsg-news/dev_config.json',
      imageDir: 'uploads/',
      VALID_INTERVALS: new Set([
           'none',

@@ -19,7 +19,7 @@
     "@angular/platform-browser-dynamic": "^22.2.6",
     "@angular/router": "^22.2.6",
     "file-saver": "^2.0.5",
-    "ng-zorro-antd": "^21.1.1",
+    "ng-zorro-antd": "^22.2.0",
     "ngx-color-picker": "^20.1.1",
     "ngx-editor": "npm:@feature23/ngx-editor@^21.1.0",
     "prosemirror-model": "^1.25.4",

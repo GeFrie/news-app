@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { ArrayConversion } from '../shared/utils/array-conversion.utils';
-import { filter, map, mergeAll, Observable, of, Subscription, switchMap, tap } from 'rxjs';
+import { map, mergeAll, of, Subscription, tap } from 'rxjs';
 import { CalcDate, Item, Plan } from '../interfaces/item';
 import { ViewService } from '../services/view.service';
 import { PlanService, PreviewCommand } from '../services/plan.service';
@@ -10,7 +10,6 @@ import { IsColorPipe } from '../pipes/is-color.pipe';
 import { ImageUrlPipe } from '../pipes/image-url.pipe';
 import { SafeUrlPipe } from '../pipes/safe-url.pipe';
 import { SafeHtmlPipe } from '../pipes/safe-html.pipe';
-import { trigger, transition, query, style, animate } from '@angular/animations';
 import { ItemService, LivePreviewData } from '../services/item.service';
 import { EditorConfigService } from '../services/editor.config.service';
 

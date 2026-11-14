@@ -84,7 +84,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   showColor: boolean = true;
 
   isNew: boolean = false;
-  // itemChanged: boolean = false;
   removable: boolean = false;
 
   isDeleting = false;
@@ -98,19 +97,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   currentRoute: any;
 
-  // imgPath: string;
-
   killButtonText = 'Entfernen';
 
   plans: Plan[] = [];
 
-  // liveItem: Item | null = null;
-  // livePlan: Plan | null = null;
-
   liveItem: LivePreviewData | null = null;
 
   activeMode: 'all' | 'changes' | 'specific' = 'all';
+
   customPreviewDate: Date = new Date(); // Für den ng-zorro DatePicker
+
+  kioskDuration: number = 6;
 
   private cdr = inject(ChangeDetectorRef);
   public activeSelectedId: number | null = null;
@@ -126,7 +123,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     public planService: PlanService,
     private sortService: SortService,
   ) {
-    // this.imgPath = `${environment.httpPath}uploads/`;
+    // this.imgPath = `${environment.apiUrl}uploads/`;
 
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
@@ -166,6 +163,28 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }
       })
     );
+
+    this.subscriptions.push(
+      this.configService.getConfig().subscribe({
+        next: (config) => {
+          if (config['displayDurationSeconds']) {
+            this.kioskDuration = config['displayDurationSeconds'];
+          }
+        }
+      })
+    );
+
+    this.subscriptions.push(
+      this.itemService.reloadFrontend$.subscribe(() => {
+        this.configService.getConfig().subscribe(config => {
+          if (config['displayDurationSeconds'] && config['displayDurationSeconds'] !== this.kioskDuration) {
+            this.kioskDuration = config['displayDurationSeconds'];
+            this.cdr.detectChanges();
+          }
+        });
+      })
+    );
+
     if (!this.items || this.items.length === 0) {
       this.loadItems();
     }
@@ -184,6 +203,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
   formatterSeconds = (value: number): string => `${value} Sek`;
 
   parserSeconds = (value: string): number => Number(value.replace(' Sek', '').trim()) || 1;
+
+  // Methode zum Speichern in config.json + Reload-Signal ans Kiosk-Frontend:
+  onKioskDurationChange(seconds: number): void {
+    if (seconds && seconds > 0) {
+      this.configService.saveDisplayDuration(seconds).subscribe({
+        next: () => {
+          this.itemService.triggerFrontendReload();
+        },
+        error: (err) => console.error('Fehler beim Speichern der Kiosk-Dauer:', err)
+      });
+    }
+  }
 
   showModal(type: 'text' | 'file' | 'color' | 'plan') {
     const item = this.itemService.selectedItem;
