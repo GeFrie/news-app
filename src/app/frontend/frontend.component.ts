@@ -6,18 +6,17 @@ import { Item, CalcDate } from '../interfaces/item';
 import { ViewService } from '../services/view.service';
 import { PlanService } from '../services/plan.service';
 
-import { IsColorPipe } from '../pipes/is-color.pipe';
 import { ImageUrlPipe } from '../pipes/image-url.pipe';
 import { SafeUrlPipe } from '../pipes/safe-url.pipe';
 import { SafeHtmlPipe } from '../pipes/safe-html.pipe';
 import { EditorConfigService } from '../services/editor.config.service';
 import { ItemService } from '../services/item.service';
+import { DateTimeString } from '../shared/utils/time-conversion.utils';
 
 @Component({
   selector: 'app-frontend',
   imports: [
     NzGridModule,
-    IsColorPipe,
     ImageUrlPipe,
     SafeUrlPipe,
     SafeHtmlPipe,
@@ -140,10 +139,12 @@ export class FrontendComponent implements OnInit, OnDestroy {
             this.defaultFontSize = config['defaultFontSize'];
           }
           document.documentElement.style.setProperty('--default-font-size', this.defaultFontSize);
+          this.loadDataAndStart();
         },
         error: (err) => {
           console.error('Fehler beim Laden der Konfigurations-JSON, nutze Fallback (5s):', err);
           this.displayDuration = 5000;
+          this.loadDataAndStart();
         }
       })
     );
@@ -329,8 +330,8 @@ export class FrontendComponent implements OnInit, OnDestroy {
         if (dateBlock.id !== item.id) return false;
 
         // Fallbacks für reine Datumsangaben ohne "T"-Zeittrenner (z.B. "2026-11-10")
-        const startTime = dateBlock.start.includes('T') ? dateBlock.start : `${dateBlock.start}T00:00:00`;
-        const endTime = dateBlock.end.includes('T') ? dateBlock.end : `${dateBlock.end}T23:59:59`;
+        const startTime = DateTimeString(dateBlock.start); //dateBlock.start.includes('T') ? dateBlock.start : `${dateBlock.start}T00:00:00`;
+        const endTime = DateTimeString(undefined, dateBlock.end); //dateBlock.end.includes('T') ? dateBlock.end : `${dateBlock.end}T23:59:59`;
 
         // Textbasierter ISO-Vergleich: Liegt "jetzt" im Zeitfenster?
         return currentIsoString >= startTime && currentIsoString <= endTime;
@@ -363,6 +364,7 @@ export class FrontendComponent implements OnInit, OnDestroy {
    * Lädt ein einzelnes Bild im Hintergrund vor und fängt Farb-Strings ab
    */
   private preloadSingleImage(url: string | null | undefined): Promise<void> {
+
     if (!url || url.trim() === '') return Promise.resolve();
 
     const isColorString = url.startsWith('#') ||
@@ -376,7 +378,7 @@ export class FrontendComponent implements OnInit, OnDestroy {
     const pipeInstance = new ImageUrlPipe();
     const absoluteUrl = pipeInstance.transform(url);
 
-    if (this.preloadedImages.has(absoluteUrl)) {
+    if (!absoluteUrl || this.preloadedImages.has(absoluteUrl)) {
       return Promise.resolve();
     }
 

@@ -36,6 +36,14 @@
                 <div>
                     <nz-space nzDirection="vertical">
                         <nz-space nzDirection="horizontal">
+                            <div style="margin-bottom: 12px; margin-left: 22px;">
+                                <span> Anzeige: </span>
+                                <span style="font-size: medium; font-weight: 500; color: #1890ff;">
+                                    News #{{ itemService.selectedItem?.id }}
+                                </span>
+                            </div>
+                        </nz-space>
+                        <nz-space nzDirection="horizontal">
                             <button *nzSpaceItem class="editor-btn" nz-button nzType="default"
                                 (click)="showModal('text')">
                                 Text bearbeiten
@@ -68,9 +76,32 @@
                                 Zeit-Planung
                             </button>
                             <nz-switch *nzSpaceItem
-                                [ngModel]="$safeNavigationMigration((selectedItem$ | async)?.sichtbar)"
+                                [class]="((selectedItem$ | async)?.sichtbar) ? 'switch-gruen' : 'switch-rot'"
+                                [ngModel]="((selectedItem$ | async)?.sichtbar)"
                                 (ngModelChange)="changeVisibility($event)" nz-tooltip="Aktivierungsstatus setzen"
                                 [nzTooltipColor]="'gray'" [nzTooltipPlacement]="'right'" />
+                        </nz-space>
+
+
+                        <nz-space nzDirection="horizontal">
+                            <button *nzSpaceItem class="editor-btn" nz-button nzType="text" style="cursor: default;">
+                                Kiosk-Anzeige (Sek.)
+                            </button>
+                            <nz-input-number *nzSpaceItem class="bold-number" style="margin-left: -8px; width: 53px;"
+                                [(ngModel)]="kioskDuration" (ngModelChange)="onKioskDurationChange($event)" [nzMin]="2"
+                                [nzMax]="60" [nzStep]="1" nzSize="default"
+                                nz-tooltip="Anzeigedauer auf dem Kiosk-Gerät (wird gespeichert)"
+                                [nzTooltipColor]="'gray'" nzTooltipPlacement="right">
+                            </nz-input-number>
+                        </nz-space>
+
+
+                        <nz-space nzDirection="horizontal" style="margin-top: 44px; opacity: 0.85;">
+                            <button *nzSpaceItem nz-button nzType="text" style="cursor: default;">
+                                Rahmen & Anfasser
+                            </button>
+                            <nz-switch *nzSpaceItem [(ngModel)]="showBoxes" (ngModelChange)="hideView('boxes')"
+                                nz-tooltip="Rahmen anzeigen" [nzTooltipColor]="'gray'" [nzTooltipPlacement]="'right'" />
                         </nz-space>
                     </nz-space>
                 </div>
@@ -137,7 +168,8 @@
                             <!-- Zeitauswahl erscheint nur im Modus 'specific' -->
                             @if (activeMode === 'specific') {
                             <nz-date-picker nzSpaceItem nzShowTime nzFormat="dd.MM.yyyy HH:mm"
-                                [(ngModel)]="customPreviewDate" (ngModelChange)="onTimeChange($event)">
+                                [nzShowTime]="{ nzFormat: 'HH:mm' }" [(ngModel)]="customPreviewDate"
+                                (ngModelChange)="onTimeChange($event)" [nzDisabledTime]="">
                             </nz-date-picker>
                             }
 
@@ -173,27 +205,30 @@
                 <nz-space nzDirection="vertical"
                     style="position: absolute; bottom: 18px; width: calc(156px + 8px + 44px);">
 
-                    <nz-input-number  class="bold-number" [style.width.%]="100" [(ngModel)]="kioskDuration"
-                        (ngModelChange)="onKioskDurationChange($event)" [nzMin]="2" [nzMax]="60" [nzStep]="1"
-                        nzSize="default" [nzFormatter]="formatterSeconds" [nzParser]="parserSeconds"
-                        nz-tooltip="Anzeigedauer auf dem Kiosk-Gerät (wird gespeichert)"
-                        [nzTooltipColor]="'gray'" nzTooltipPlacement="right">
-                        <span nzInputAddonBefore style="cursor: default;">Kiosk-Anzeige</span>
-                    </nz-input-number>
-
                     <button nz-button nzType="default" nzBlock [disabled]="isNew || currentRoute !== 'editor'"
-                        (click)="createItem()">
+                        (click)="createItem()" nz-tooltip="neues News anlegen" [nzTooltipColor]="'gray'"
+                        nzTooltipPlacement="right">
                         Neu
                     </button>
 
                     <button nz-button nzType="primary" nzBlock [nzLoading]="isSaving"
-                        [disabled]="stateService.hasState(SaveState.SAVED)" (click)="save().subscribe()">
+                        [disabled]="stateService.hasState(SaveState.SAVED)" (click)="save().subscribe()"
+                        nz-tooltip="Ausgewähltes News speichern" [nzTooltipColor]="'gray'" nzTooltipPlacement="right">
                         Speichern
                     </button>
 
+                    <button nz-button nzType="default" nzBlock [nzLoading]="isSaving"
+                        [disabled]="stateService.hasState(SaveState.SAVED) || isSaving" (click)="discardChanges()"
+                        nz-tooltip="Änderungen am ausgewählten News rückgängig machen" [nzTooltipColor]="'gray'"
+                        nzTooltipPlacement="right">
+                        Verwerfen
+                    </button>
+
                     <button nz-button nzType="default" nzDanger nzBlock [nzLoading]="isDeleting"
-                        [disabled]="!removable || isDeleting || currentRoute !== 'editor'" (click)="deleteItem()">
-                        {{killButtonText}}
+                        [disabled]="!removable || isNew || isDeleting || currentRoute !== 'editor'"
+                        (click)="deleteItem()" nz-tooltip="ausgewähltes News löschen" [nzTooltipColor]="'gray'"
+                        nzTooltipPlacement="right">
+                        Entfernen
                     </button>
                 </nz-space>
             </div>
@@ -212,28 +247,46 @@
 
                 @for (item of validItems; track item.id) {
 
-                <!-- (click)="stateService.hasState(SaveState.SAVED) && selectItem(item)" -->
-                <!-- [class.selected]="(selectedItem$ | async)?.id === item.id" -->
+                <!-- [style.background]="(item.hintergrund | isColor) ? item.hintergrund : 'none'" -->
                 <div [id]="'thumb-' + item.id" class="thumbnail" cdkDrag [cdkDragData]="item"
                     (click)="selectItem(item, $event)" [class.selected]="activeSelectedId === item.id"
-                    [style.background]="($safeNavigationMigration(item?.hintergrund) | isColor) ? item?.hintergrund : 'none'"
-                    (cdkDragStarted)="onDragStarted()" (cdkDragEnded)="onDragEnded()">
+                    [style.background]="item.bgColor || '#fff'" (cdkDragStarted)="onDragStarted()"
+                    (cdkDragEnded)="onDragEnded()">
 
-                    @if (!(item.hintergrund | isColor)) {
-                    @if (item.mediaType === 'image') {
-                    <img [src]="item.hintergrund | imageUrl" class="fill" [alt]="`News #${item.id}`">
-                    }
-                    @if (item.mediaType === 'pdf') {
-                    <iframe [src]="item.hintergrund | imageUrl | safeUrl" class="fill"></iframe>
-                    }
-                    }
+                    <div class="thumbnail-stage">
+                        @if (item.mediaType === 'pdf' && (item.hintergrund | imageUrl); as pdfSrc) {
+                            <iframe [src]="pdfSrc | safeUrl" class="fill"></iframe>
+                        } @else {
+                            @for (img of item.imageBoxes ?? []; track img.id) {
+                                @if (img.src | imageUrl; as imgSrc) {
+                                    <div class="image-wrapper is-positioned"
+                                        [style.left.%]="img.left"
+                                        [style.top.%]="img.top"
+                                        [style.width.%]="img.width"
+                                        [style.height.%]="img.height"
+                                        [style.opacity]="img.opacity ?? 1"
+                                        [style.z-index]="img.zIndex ?? 1">
+                                        <img [src]="imgSrc" class="fill" [alt]="`Bild ${img.id}`">
+                                    </div>
+                                }
+                            }
+                        }
 
-                    <div class="message preview-scaled" [innerHTML]="item.text | safeHtml"
-                        style="pointer-events: none;"></div>
+                        <div class="message news-content-output" 
+                            [class.is-positioned]="!!item.textBox"
+                            [style.left.%]="item.textBox?.left ?? null" 
+                            [style.top.%]="item.textBox?.top ?? null"
+                            [style.width.%]="item.textBox?.width ?? null"
+                            [style.height.%]="item.textBox?.height ?? null" 
+                            [innerHTML]="item.text | safeHtml"
+                            style="pointer-events: none;"></div>
+                    </div>
+
                 </div>
                 }
             </div>
         </nz-sider>
+
     </nz-layout>
 
     <nz-footer class="custom-footer">

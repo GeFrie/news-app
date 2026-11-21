@@ -6,12 +6,12 @@ import { CalcDate, Item, Plan } from '../interfaces/item';
 import { ViewService } from '../services/view.service';
 import { PlanService, PreviewCommand } from '../services/plan.service';
 
-import { IsColorPipe } from '../pipes/is-color.pipe';
 import { ImageUrlPipe } from '../pipes/image-url.pipe';
 import { SafeUrlPipe } from '../pipes/safe-url.pipe';
 import { SafeHtmlPipe } from '../pipes/safe-html.pipe';
 import { ItemService, LivePreviewData } from '../services/item.service';
 import { EditorConfigService } from '../services/editor.config.service';
+import { DateTimeString } from '../shared/utils/time-conversion.utils';
 
 interface StateChangeEvent {
   changeTime: string;
@@ -23,7 +23,6 @@ interface StateChangeEvent {
   selector: 'app-preview',
   imports: [
     NzGridModule,
-    IsColorPipe,
     ImageUrlPipe,
     SafeUrlPipe,
     SafeHtmlPipe,
@@ -347,10 +346,10 @@ export class PreviewComponent implements OnInit, OnDestroy {
     const timeline: { time: string; id: number; type: 'START' | 'END' }[] = [];
 
     mergedDates.forEach(date => {
-      const startTime = date.start.includes('T') ? date.start : `${date.start}T00:00:00`;
+      const startTime = DateTimeString(date.start); //date.start.includes('T') ? date.start : `${date.start}T00:00:00`;
       timeline.push({ time: startTime, id: date.id, type: 'START' });
 
-      const endTime = date.end.includes('T') ? date.end : `${date.end}T23:59:59`;
+      const endTime = DateTimeString(undefined, date.end); //date.end.includes('T') ? date.end : `${date.end}T23:59:59`;
       timeline.push({ time: endTime, id: date.id, type: 'END' });
     });
 
@@ -401,8 +400,8 @@ export class PreviewComponent implements OnInit, OnDestroy {
     const merged: CalcDate[] = [];
 
     for (const current of sorted) {
-      const curStart = current.start.includes('T') ? current.start : `${current.start}T00:00:00`;
-      const curEnd = current.end.includes('T') ? current.end : `${current.end}T23:59:59`;
+      const curStart = DateTimeString(current.start); // current.start.includes('T') ? current.start : `${current.start}T00:00:00`;
+      const curEnd = DateTimeString(undefined, current.end); // current.end.includes('T') ? current.end : `${current.end}T23:59:59`;
 
       if (merged.length > 0) {
         const prev = merged[merged.length - 1];
@@ -431,8 +430,8 @@ export class PreviewComponent implements OnInit, OnDestroy {
   getItemsAtSpecificTime(rawDates: CalcDate[], targetIsoString: string): number[] {
     const activeIds = rawDates
       .filter(dateBlock => {
-        const startTime = dateBlock.start.includes('T') ? dateBlock.start : `${dateBlock.start}T00:00:00`;
-        const endTime = dateBlock.end.includes('T') ? dateBlock.end : `${dateBlock.end}T23:59:59`;
+        const startTime = DateTimeString(dateBlock.start); //dateBlock.start.includes('T') ? dateBlock.start : `${dateBlock.start}T00:00:00`;
+        const endTime = DateTimeString(undefined, dateBlock.end); //dateBlock.end.includes('T') ? dateBlock.end : `${dateBlock.end}T23:59:59`;
         return targetIsoString >= startTime && targetIsoString <= endTime;
       })
       .map(dateBlock => dateBlock.id);
@@ -446,7 +445,7 @@ export class PreviewComponent implements OnInit, OnDestroy {
    */
   private updateValidItems(): void {
     const now = new Date();
-
+ 
     // Erzeugt das lokale Format "2026-11-10T21:44:00" passend zur PHP-Ausgabe
     const currentIsoString = new Date().toISOString();
 
@@ -456,8 +455,8 @@ export class PreviewComponent implements OnInit, OnDestroy {
         if (dateBlock.id !== item.id) return false;
 
         // Fallbacks für reine Datumsangaben ohne "T"-Zeittrenner (z.B. "2026-11-10")
-        const startTime = dateBlock.start.includes('T') ? dateBlock.start : `${dateBlock.start}T00:00:00`;
-        const endTime = dateBlock.end.includes('T') ? dateBlock.end : `${dateBlock.end}T23:59:59`;
+        const startTime = DateTimeString(dateBlock.start); //dateBlock.start.includes('T') ? dateBlock.start : `${dateBlock.start}T00:00:00`;
+        const endTime = DateTimeString(undefined, dateBlock.end); //dateBlock.end.includes('T') ? dateBlock.end : `${dateBlock.end}T23:59:59`;
 
         // Textbasierter ISO-Vergleich: Liegt "jetzt" im Zeitfenster?
         return currentIsoString >= startTime && currentIsoString <= endTime;
@@ -503,7 +502,7 @@ export class PreviewComponent implements OnInit, OnDestroy {
     const pipeInstance = new ImageUrlPipe();
     const absoluteUrl = pipeInstance.transform(url);
 
-    if (this.preloadedImages.has(absoluteUrl)) {
+    if (!absoluteUrl || this.preloadedImages.has(absoluteUrl)) {
       return Promise.resolve();
     }
 

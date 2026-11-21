@@ -1,3 +1,5 @@
+$primary-color: #1890ff;
+
 .html-header {
   margin: 16px 0 4px 6px;
 }
@@ -209,42 +211,136 @@ span.fs-xlarge {
   color: #000;
 }
 
-::ng-deep .NgxEditor__Content {
-  font-size: var(--default-font-size) !important;
+:host ::ng-deep .NgxEditor__Content {
+  font-size: var(--default-font-size, 36px);
+
+  p {
+    font-size: 1em; 
+  }
+
+  h1 {
+    font-size: 2em; 
+  }
+
+  h2 {
+    font-size: 1.5em; 
+  }
+
+  h3 {
+    font-size: 1.1875em; 
+  }
+
+  h4 {
+    font-size: 1em; 
+  }
 }
 
-::ng-deep .NgxEditor__Content h1 {
-  font-size: calc(var(--default-font-size) / 16 * 32) !important;
-}
-
-::ng-deep .NgxEditor__Content h2 {
-  font-size: calc(var(--default-font-size) / 16 * 24) !important;
-}
-
-::ng-deep .NgxEditor__Content h3 {
-  font-size: calc(var(--default-font-size) / 16 * 19) !important;
-}
-
-::ng-deep .NgxEditor__Content h4 {
-  font-size: calc(var(--default-font-size) / 16 * 16) !important;
-}
-
-.NgxEditor .NgxEditor__Content {
-  zoom: calc(1384 / 1920) !important;
-}
-
-// .editor-contrast-wrapper {
-//   ::ng-deep .NgxEditor__Content {
-//     background-color: var(--editor-bg, #ffffff) !important;
-//     color: var(--editor-text, #000000) !important;
-//     transition: background-color 0.25s ease;
-
-//     // Falls ungefärbter Standardtext auf dunklem Hintergrund steht, bleibt er lesbar
-//     // color: inherit;
-//   }
-// }
 :host ::ng-deep .editor-contrast-wrapper .NgxEditor__Content {
   background-color: var(--editor-bg, #ffffff) !important;
   color: var(--editor-text, #000000) !important;
   transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/** Anordnung der Buttons in Editor-Toolbar */
+:host ::ng-deep .NgxEditor__MenuBar {
+  // Standard-Buttons (Italic, Underline, Strike, Farben, Ausrichtung, Listen) bekommen order: 2
+  > * {
+    order: 2;
+  }
+
+  // 1. Ganz links: Undo, Redo, Separator (Kinder 1 bis 3)
+  > *:nth-child(-n+3) {
+    order: -5;
+  }
+
+  // 2. Block-Typ ("Standard" / "Überschrift 1") & Schriftart
+  .block-type-item,
+  .font-family-item {
+    order: -4;
+  }
+
+  // 3. Schriftgröße ("72px")
+  .font-size-item,
+  .font-size-sep {
+    order: -3;
+  }
+
+  // 4. Schriftstärke ("Normal")
+  .font-weight-item {
+    order: -2;
+  }
+
+  // 5. Alle übrigen Custom-Buttons rechts von den Listen (z. B. AA / Kontrast) vor Italic ziehen
+  > *:nth-child(n+25):not(.table-item) {
+    order: -1;
+  }
+
+  // 6. Standard-Buttons ab Italic (order: 2), Tabellen-Button direkt nach horizontal_rule
+  .table-item {
+    order: 3;
+  }
+
+  // Tooltip-Fix für alle Custom-Selects
+  .font-size-item nz-select-item,
+  .font-weight-item nz-select-item,
+  .block-type-item nz-select-item {
+    pointer-events: none;
+  }
+}
+
+/** Tablle */
+.table-picker-dropdown {
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 6px 16px 0 rgba(0, 0, 0, 0.08);
+  padding: 8px;
+  min-width: 196px;
+
+  .grid-header {
+    font-size: 12px;
+    color: #595959;
+    margin-bottom: 6px;
+    text-align: center;
+    font-weight: 500;
+  }
+
+  .grid-matrix {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    align-items: center;
+    padding-bottom: 4px;
+  }
+
+  .grid-row {
+    display: flex;
+    gap: 3px;
+  }
+
+  .grid-cell {
+    width: 18px;
+    height: 18px;
+    border: 1px solid #d9d9d9;
+    background: #fafafa;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.1s ease;
+
+    &.active {
+      border-color: #1890ff;
+      background: rgba(24, 144, 255, 0.25);
+    }
+  }
+
+  .table-actions-menu {
+    box-shadow: none;
+    border-right: none;
+    margin-top: 4px;
+  }
+}
+
+.btn-highlight {
+  background-color: rgba($primary-color, 0.05);
+  color: rgba(0, 0, 0, 0.85) !important;
+  width: 100%;
 }

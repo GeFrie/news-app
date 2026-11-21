@@ -17,6 +17,9 @@ import { LOCALE_ID } from '@angular/core';
 import { NZ_DATE_CONFIG, NzDateConfig } from 'ng-zorro-antd/i18n';
 import { provideNzDateFnsAdapter } from 'ng-zorro-antd/core/time';
 
+// import { provideNzIcons } from 'ng-zorro-antd/icon';
+// import { ExclamationCircleOutline } from '@ant-design/icons-angular/icons';
+
 registerLocaleData(de);
 registerLocaleData(localeDe);
 
@@ -34,6 +37,7 @@ export const appConfig: ApplicationConfig = {
     provideNzDateFnsAdapter(),
     importProvidersFrom(FormsModule),
     provideHttpClient(withXhr()),
+    // provideNzIcons([ExclamationCircleOutline]),
     importProvidersFrom(
       NgxEditorModule.forRoot({
         locals: {
@@ -73,17 +77,6 @@ export const appConfig: ApplicationConfig = {
           subscript: 'Tiefgestellt',
           undo: 'Rückgängig',
           redo: 'Wiederholen',
-          //     insertTable: 'Tabelle einfügen',
-          //     addColumnBefore: 'Spalte davor',
-          //     addColumnAfter: 'Spalte danach',
-          //     deleteColumn: 'Spalte löschen',
-          //     addRowBefore: 'Zeile davor',
-          //     addRowAfter: 'Zeile danach',
-          //     deleteRow: 'Zeile löschen',
-          //     mergeCells: 'Zellen verbinden',
-          //     splitCell: 'Zelle teilen',
-          //     deleteTable: 'Tabelle löschen',
-
         },
       }),
     ),

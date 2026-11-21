@@ -1,8 +1,7 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterOutlet, RouterLink, RouterLinkActive, ActivatedRoute, Router, NavigationEnd } from '@angular/router';
+import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
 import { AsyncPipe } from '@angular/common';
-import { IsColorPipe } from '../pipes/is-color.pipe';
 import { ImageUrlPipe } from '../pipes/image-url.pipe';
 
 
@@ -19,7 +18,7 @@ import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
 
-import { filter, forkJoin, map, noop, Observable, of, Subscription, switchMap, take, tap } from 'rxjs';
+import { filter, forkJoin, map, Observable, of, Subscription, switchMap, tap } from 'rxjs';
 
 import { ItemService, LivePreviewData } from '../services/item.service';
 import { Item, Plan } from '../interfaces/item';
@@ -28,9 +27,7 @@ import { Item, Plan } from '../interfaces/item';
 import { ModalManagerService } from '../services/modal.manager.service';
 import { NotificationService } from '../services/notification.service';
 
-import { environment } from '../../environments/environment';
 import { SafeHtmlPipe } from '../pipes/safe-html.pipe';
-import { IsPdfPipe } from '../pipes/is-pdf.pipe';
 import { SafeUrlPipe } from '../pipes/safe-url.pipe';
 
 import { DragDropModule, CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
@@ -58,10 +55,8 @@ import { DatePipe } from '@angular/common';
     NzDatePickerModule,
     NzInputNumberModule,
     AsyncPipe,
-    IsColorPipe,
     ImageUrlPipe,
     SafeHtmlPipe,
-    // IsPdfPipe,
     SafeUrlPipe,
     DatePipe,
     DragDropModule,
@@ -82,6 +77,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   showText: boolean = true;
   showFile: boolean = true;
   showColor: boolean = true;
+  showBoxes: boolean = true;
 
   isNew: boolean = false;
   removable: boolean = false;
@@ -96,8 +92,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   selectedItem$ = this.itemService.selectedItem$; // für Async-Pipe
 
   currentRoute: any;
-
-  killButtonText = 'Entfernen';
 
   plans: Plan[] = [];
 
@@ -140,6 +134,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.subscriptions.push(
       this.itemService.selectedItem$.subscribe(item => {
         this.activeSelectedId = item ? item.id : null;
+        this.isNew = !!item && item.id === 0; // <-- Automatisch true bei Neu (id=0), sonst immer false!
         this.cdr.detectChanges(); // Jetzt macht der Change-Detector Sinn!
       })
     );
@@ -161,6 +156,57 @@ export class DashboardComponent implements OnInit, OnDestroy {
           // Falls sie noch nicht geladen sind, den HTTP-Call starten
           this.loadItems();
         }
+      })
+    );
+
+    // this.subscriptions.push(
+    //   this.itemService.discardChanges$.subscribe(() => {
+    //     const currentId = this.itemService.selectedItem?.id;
+    //     const originalItem = this.items.find(i => i.id === currentId);
+
+    //     if (originalItem) {
+    //       // Kopie des unveränderten Originals (inkl. tiefer Kopie von imageBoxes) wiederherstellen
+    //       this.itemService.setSelectedItem({
+    //         ...originalItem,
+    //         textBox: originalItem.textBox ? { ...originalItem.textBox } : undefined,
+    //         imageBoxes: originalItem.imageBoxes
+    //           ? originalItem.imageBoxes.map(box => ({ ...box }))
+    //           : []
+    //       });
+    //     } else if (currentId === 0 || currentId) {
+    //       this.loadItems();
+    //     }
+    //     this.stateService.setState(SaveState.SAVED);
+    //     this.isNew = false;
+    //     this.selectItem(this.items[0]);
+    //   })
+    // );
+    this.subscriptions.push(
+      this.itemService.discardChanges$.subscribe(() => {
+        const currentId = this.itemService.selectedItem?.id;
+        const originalItem = this.items.find(i => Number(i.id) === Number(currentId));
+
+        if (originalItem) {
+          // Kopie des unveränderten Originals wieder als aktives Item setzen & ausgewählt lassen
+          const restored = {
+            ...originalItem,
+            textBox: originalItem.textBox ? { ...originalItem.textBox } : undefined,
+            imageBoxes: originalItem.imageBoxes
+              ? originalItem.imageBoxes.map(box => ({ ...box }))
+              : []
+          };
+          this.itemService.setSelectedItem(restored);
+          this.selectItem(restored);
+        } else {
+          // Fallback: Wenn ein ungespeichertes neues Item (id === 0) verworfen wurde
+          this.loadItems();
+          if (this.items.length > 0) {
+            this.selectItem(this.items[0]);
+          }
+        }
+
+        this.stateService.setState(SaveState.SAVED);
+        this.isNew = false;
       })
     );
 
@@ -281,6 +327,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
         nzCancelText: 'Zurück',
         nzOkDanger: true,
         nzOnOk: () => {
+          // Falls eine ungespeicherte "Neu"-News (id === 0) verworfen wurde, aus dem Array entfernen
+          this.items = this.items.filter(i => i.id !== 0);
+          this.isNew = false;
           this.stateService.setState(SaveState.SAVED);
           this.itemService.setSelectedItem(item);
         },
@@ -289,6 +338,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }
       });
     } else {
+      this.items = this.items.filter(i => i.id !== 0);
+      this.isNew = false;
       this.stateService.setState(SaveState.SAVED);
       this.itemService.setSelectedItem(item);
     }
@@ -304,70 +355,62 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
     this.selectItem(this.items[ix - 1]);
     this.isNew = true;
-    this.killButtonText = "Abbrechen";
     this.stateService.setState(SaveState.ITEM);
   }
 
   deleteItem() {
-    if (this.killButtonText === 'Entfernen') {
-      this.modalService.confirm({
-        nzTitle: 'Eintrag löschen',
-        nzContent: `News #${this.itemService.selectedItem?.id} wird unwiderruflich gelöscht.`,
-        nzOkText: 'Löschen',
-        nzOkDanger: true,
-        nzOnOk: () => {
-          const item = this.itemService.selectedItem;
-          if (item && item.id !== undefined) {
-            this.isDeleting = true;
-            this.itemService.deleteItem(item.id).subscribe({
-              next: (success) => {
-                if (success) {
-                  this.notify.createNotification(
-                    'success',
-                    'Server-Meldung',
-                    `News #${this.itemService.selectedItem?.id} wurde in der Datenbank gelöscht.`
-                  );
-                  // neue Referenz (Immutability), damit der Sider reagiert
-                  this.items = this.items.filter(item => item.id !== this.itemService.selectedItem?.id);
-                  // Auswahl auf das erste Item setzen || neues Item
-                  if (this.items.length > 0) {
-                    this.selectItem(this.items[0]);
-                  } else {
-                    this.createItem();
-                  }
-                  // Image-File löschen, falls vorhanden und gewünscht
+    this.modalService.confirm({
+      nzTitle: 'Eintrag löschen',
+      nzContent: `News #${this.itemService.selectedItem?.id} wird unwiderruflich gelöscht.`,
+      nzOkText: 'Löschen',
+      nzOkDanger: true,
+      nzOnOk: () => {
+        const item = this.itemService.selectedItem;
+        if (item && item.id !== undefined) {
+          this.isDeleting = true;
+          this.itemService.deleteItem(item.id).subscribe({
+            next: (success) => {
+              if (success) {
+                this.notify.createNotification(
+                  'success',
+                  'Server-Meldung',
+                  `News #${this.itemService.selectedItem?.id} wurde in der Datenbank gelöscht.`
+                );
+                // neue Referenz (Immutability), damit der Sider reagiert
+                this.items = this.items.filter(item => item.id !== this.itemService.selectedItem?.id);
+                // Auswahl auf das erste Item setzen || neues Item
+                if (this.items.length > 0) {
+                  this.selectItem(this.items[0]);
                 } else {
-                  this.notify.createNotification(
-                    'error',
-                    'Server-Fehler',
-                    `News #${this.itemService.selectedItem?.id} konnte nicht gelöscht werden.`,
-                    0
-                  );
+                  this.createItem();
                 }
-              },
-              error: () => {
+                // Image-File löschen, falls vorhanden und gewünscht
+              } else {
                 this.notify.createNotification(
                   'error',
                   'Server-Fehler',
                   `News #${this.itemService.selectedItem?.id} konnte nicht gelöscht werden.`,
                   0
                 );
-              },
-              complete: () => {
-                this.isDeleting = false;
               }
-            });
-          }
+            },
+            error: () => {
+              this.notify.createNotification(
+                'error',
+                'Server-Fehler',
+                `News #${this.itemService.selectedItem?.id} konnte nicht gelöscht werden.`,
+                0
+              );
+            },
+            complete: () => {
+              this.isDeleting = false;
+              this.stateService.setState(SaveState.SAVED);
+              this.isNew = false;
+            }
+          });
         }
-      });
-    } else {
-      this.items.pop();
-      this.selectItem(this.items[0]);
-      this.isNew = false;
-      // this.itemChanged = false;
-      this.stateService.setState(SaveState.SAVED);
-      this.killButtonText = "Entfernen";
-    };
+      }
+    });
   }
 
   save(): Observable<any> {
@@ -395,7 +438,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
             const element = document.getElementById('thumb-' + idToSelect);
             element?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           }, 50);
-          this.killButtonText = 'Entfernen';
         }
 
         // 2. SCHRITT: Bedingungen für Folge-Tasks prüfen
@@ -439,6 +481,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
           // Erst NACH dem erfolgreichen Speichern in der DB das Frontend benachrichtigen!
           this.itemService.triggerFrontendReload();
+          this.isNew = false;
 
           // 3. SCHRITT: Benachrichtigung anzeigen
           if (messages.length > 0) {
@@ -468,12 +511,32 @@ export class DashboardComponent implements OnInit, OnDestroy {
     );
   }
 
+  discardChanges(): void {
+    this.itemService.executeDashboardDiscard();
+    // this.items.pop();
+    // this.selectItem(this.items[0]);
+    // this.stateService.setState(SaveState.SAVED);
+    // this.isNew = false;
+  }
 
-  hideView(type: 'text' | 'file' | 'color') {
-    const configKey = type === 'text' ? 'showText' : (type === 'file' ? 'showFile' : 'showColor');
+  // hideView(type: 'text' | 'file' | 'color') {
+  //   const configKey = type === 'text' ? 'showText' : (type === 'file' ? 'showFile' : 'showColor');
+  //   this.configService.updateView(configKey, this[configKey]);
+  //   this.stateService.addState(SaveState.ITEM);
+  // }
+  hideView(type: 'text' | 'file' | 'color' | 'boxes') {
+    const map = {
+      text: 'showText',
+      file: 'showFile',
+      color: 'showColor',
+      boxes: 'showBoxes',
+    } as const;
+    const configKey = map[type];
     this.configService.updateView(configKey, this[configKey]);
-    // this.itemChanged = true;
-    this.stateService.addState(SaveState.ITEM);
+
+    if (type !== 'boxes') {
+      this.stateService.addState(SaveState.ITEM);
+    }
   }
 
   changeVisibility(event: any) {

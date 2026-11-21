@@ -1,10 +1,12 @@
-import { Component, inject, OnInit, OnDestroy, ViewChild, signal, ChangeDetectorRef, AfterViewInit, ViewChildren, QueryList, ElementRef, ChangeDetectionStrategy } from '@angular/core';
-
+import { Component, inject, OnInit, OnDestroy, ViewChild, signal, ChangeDetectorRef, AfterViewInit, ChangeDetectionStrategy, HostListener } from '@angular/core';
 import { Editor, schema, Toolbar, NgxEditorMenuComponent, NgxEditorComponent } from 'ngx-editor';
-import { Schema, Mark, MarkType } from 'prosemirror-model';
-import { toggleMark, setBlockType } from 'prosemirror-commands';
-import { tableNodes, tableEditing } from 'prosemirror-tables';
+
+import { Schema, Mark, MarkType, Fragment, Slice } from 'prosemirror-model';
+import { setBlockType } from 'prosemirror-commands';
 import { inputRules, InputRule } from 'prosemirror-inputrules';
+import { TextSelection } from 'prosemirror-state';
+import { tableNodes, tableEditing, addRowBefore, addRowAfter, deleteRow, addColumnBefore, addColumnAfter, deleteColumn, deleteTable, isInTable, columnResizing, goToNextCell, CellSelection, setCellAttr } from 'prosemirror-tables';
+import { keymap } from 'prosemirror-keymap';
 import { Plugin } from 'prosemirror-state';
 
 import { NZ_MODAL_DATA, NzModalRef } from "ng-zorro-antd/modal";
@@ -25,14 +27,15 @@ import { NzTimePickerModule } from 'ng-zorro-antd/time-picker';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzContextMenuService, NzDropdownMenuComponent, NzDropdownModule } from 'ng-zorro-antd/dropdown';
+import { NzRadioModule } from 'ng-zorro-antd/radio';
 
-import { Observable, Subscription } from 'rxjs';
+import { Subscription } from 'rxjs';
 import { PlanService } from '../services/plan.service';
 import { DatePipe } from '@angular/common';
 import { createTageRecord } from '../shared/utils/plan.utils';
-import { HttpClient } from '@angular/common/http';
-import { ViewService } from '../services/view.service';
 import { EditorConfigService } from '../services/editor.config.service';
+import { ResizableTableView } from './resize.table.view';
 
 @Component({
   selector: 'app-editor.modal',
@@ -51,6 +54,8 @@ import { EditorConfigService } from '../services/editor.config.service';
     NzButtonModule,
     NzTableModule,
     NzInputModule,
+    NzDropdownModule,
+    NzRadioModule,
     ColorPickerDirective,
     DatePipe,
   ],
@@ -64,12 +69,49 @@ export class EditorModalComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly startValue = signal<Date | null>(null);
   readonly endValue = signal<Date | null>(null);
 
+
   @ViewChild('endDatePicker') endDatePicker!: NzDatePickerComponent;
   @ViewChild('startDatePicker') startDatePicker!: NzDatePickerComponent;
+
+  @ViewChild('borderPickerTrigger', { read: ColorPickerDirective })
+  borderPickerTrigger!: ColorPickerDirective;
 
   readonly nzData = inject(NZ_MODAL_DATA);
   readonly modalRef = inject(NzModalRef);
   readonly MAX_FILE_SIZE_MB = 5;
+
+  cellColors: string[] = [
+    '#e6f7ff', '#f6ffed', '#fffbe6', '#fff1f0',
+    '#f9f0ff', '#f5f5f5', '#d9d9d9', '#001529'
+  ];
+
+  isBorderPickerOpen = false;
+  pickerPos = { x: 0, y: 0 };
+
+  @HostListener('document:keydown.escape', ['$event'])
+  onEscapeKey(event: Event): void {
+    if (this.isBorderPickerOpen) {
+      // 1. Stufe: Nur den offenen Farbwähler schließen
+      event.preventDefault();
+      event.stopPropagation();
+
+      this.borderPickerTrigger?.closeDialog();
+      this.isBorderPickerOpen = false;
+      this.editor.view.focus();
+    } else if (this.isContextMenuOpen || this.tableMenuVisible) {
+      // 2. Stufe: Nur das offene Kontextmenü / Dropdown schließen
+      event.preventDefault();
+      event.stopPropagation();
+
+      this.nzContextMenuService.close();
+      this.isContextMenuOpen = false;
+      this.tableMenuVisible = false;
+      this.editor.view.focus();
+    } else {
+      // 3. Stufe (kein Picker & kein Menü mehr offen): Modal schließen
+      this.modalRef.close();
+    }
+  }
 
   weekDays = [
     { label: 'Mo', value: 1 },
@@ -96,28 +138,103 @@ export class EditorModalComponent implements OnInit, AfterViewInit, OnDestroy {
 
   colorGroups = environment.colorGroups;
 
+  gridSize = [1, 2, 3, 4, 5, 6, 7, 8];
+  hoverRows = 0;
+  hoverCols = 0;
+
+  tableMenuVisible = false;
+
   fontSizes: string[] = [
     '12px', '14px', '16px', '18px', '20px', '24px', '28px', '32px',
     '40px', '48px', '56px', '64px', '72px', '80px', '96px', '100px'
   ];
 
+  fontWeights = [
+    { label: 'Normal', value: '400' },
+    { label: 'Medium', value: '500' },
+    { label: 'Semi-Bold', value: '600' },
+    { label: 'Bold', value: '700' }
+  ];
+
+  blockTypes = [
+    { label: 'Absatz', value: 'paragraph' },
+    { label: 'Überschrift 1', value: 'h1' },
+    { label: 'Überschrift 2', value: 'h2' },
+    { label: 'Überschrift 3', value: 'h3' },
+    { label: 'Überschrift 4', value: 'h4' }
+  ];
+
+  fontFamilyGroups = [
+    {
+      group: 'System-Standards',
+      fonts: [
+        { label: 'Arial', value: "Arial, 'Liberation Sans', sans-serif" },
+        { label: 'Times New Roman', value: "'Times New Roman', 'Liberation Serif', serif" },
+        { label: 'Courier New', value: "'Courier New', 'Liberation Mono', monospace" },
+        { label: 'Verdana', value: "Verdana, 'DejaVu Sans', sans-serif" },
+        { label: 'Georgia', value: "Georgia, 'DejaVu Serif', serif" }
+        // { label: 'Arial / Liberation Sans', value: "Arial, 'Liberation Sans', sans-serif" },
+        // { label: 'Times New Roman / Liberation Serif', value: "'Times New Roman', 'Liberation Serif', serif" },
+        // { label: 'Courier New / Liberation Mono', value: "'Courier New', 'Liberation Mono', monospace" },
+        // { label: 'Verdana / DejaVu Sans', value: "Verdana, 'DejaVu Sans', sans-serif" },
+        // { label: 'Georgia / DejaVu Serif', value: "Georgia, 'DejaVu Serif', serif" }
+      ]
+    },
+    {
+      group: 'Kiosk Modern',
+      fonts: [
+        { label: 'Inter', value: "'Inter', 'Segoe UI', 'Liberation Sans', sans-serif" },
+        { label: 'Roboto', value: "'Roboto', Arial, 'Liberation Sans', sans-serif" },
+        { label: 'Open Sans', value: "'Open Sans', 'Segoe UI', 'DejaVu Sans', sans-serif" },
+        { label: 'Montserrat', value: "'Montserrat', Arial, 'Liberation Sans', sans-serif" },
+        { label: 'Lato', value: "'Lato', Calibri, 'Liberation Sans', sans-serif" },
+        { label: 'Poppins', value: "'Poppins', 'Segoe UI', 'Liberation Sans', sans-serif" }
+      ]
+    },
+    {
+      group: 'Schlagzeilen & Ticker',
+      fonts: [
+        { label: 'Oswald (Small)', value: "'Oswald', Impact, 'Liberation Sans Narrow', sans-serif" },
+        { label: 'Bebas Neue (Caps)', value: "'Bebas Neue', Impact, sans-serif" },
+        { label: 'Impact', value: "Impact, 'Anton', 'Arial Black', sans-serif" }
+      ]
+    },
+    {
+      group: 'Klassisch & Editorial',
+      fonts: [
+        { label: 'Merriweather', value: "'Merriweather', Georgia, 'DejaVu Serif', serif" },
+        { label: 'Playfair Display', value: "'Playfair Display', 'Times New Roman', 'Liberation Serif', serif" }
+      ]
+    },
+    {
+      group: 'Monospace',
+      fonts: [
+        { label: 'Consolas', value: "Consolas, 'DejaVu Sans Mono', monospace" },
+        { label: 'JetBrains Mono', value: "'JetBrains Mono', Consolas, 'DejaVu Sans Mono', monospace" }
+      ]
+    }
+  ];
+
+  get allFontFamilies() {
+    return this.fontFamilyGroups.flatMap(g => g.fonts);
+  }
+
   editor!: Editor;
 
-  // toolbar: Toolbar = environment.editorToolbar;
   toolbar: Toolbar = [
     ['undo', 'redo'],
-    ['bold', 'italic', 'underline', 'strike'],
+    // ['bold', 'italic', 'underline', 'strike'],
+    ['italic', 'underline', 'strike'],
     ['superscript', 'subscript'],
     ['text_color', 'background_color'],
-    ['format_clear'],
+    // ['format_clear'],
     // ['code', 'blockquote'],
     //[{ link: { showOpenInNewTab: false } }, 'image'],
     ['align_left', 'align_center', 'align_right', 'align_justify', 'indent', 'outdent'],
     ['horizontal_rule'],
     ['ordered_list', 'bullet_list'],
     // ['link', 'image'],
-    // ['table']
-    [{ heading: ['h1', 'h2', 'h3', 'h4'] }],
+    // [{ heading: ['h1', 'h2', 'h3', 'h4'] }],
   ]
 
   isEsc: boolean = false;
@@ -161,10 +278,34 @@ export class EditorModalComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.plans.filter(plan => !plan.remove);
   }
 
+  get isInTable(): boolean {
+    return !!this.editor?.view && isInTable(this.editor.view.state);
+  }
+
   initText: boolean = true;
 
-  defaultFontSize = '16px';
+  defaultFontSize = '32px'; // steht auch in der config.json
   currentFontSize = this.defaultFontSize;
+
+  defaultFontWeight = '400';
+  currentFontWeight = this.defaultFontWeight;
+
+  currentBlockType = 'paragraph';
+
+  defaultFontFamily = '';
+  currentFontFamily = this.defaultFontFamily;
+
+  warnStr?: string;
+
+  isContextMenuOpen = false;
+
+  currentTableBorderColor = '#000000';
+
+  rawSelectedFile: File | null = null;
+  resizeMode: 'max' | 'original' = 'max';
+  imageDimensionsInfo = '';
+  finalImageSize: { width: number; height: number } | null = null;
+  isOversizedImage = false;
 
   constructor(
     // private msg: NzMessageService,
@@ -172,6 +313,7 @@ export class EditorModalComponent implements OnInit, AfterViewInit, OnDestroy {
     private notify: NotificationService,
     private configService: EditorConfigService,
     private cdr: ChangeDetectorRef,
+    private nzContextMenuService: NzContextMenuService,
   ) { }
 
   ngOnInit() {
@@ -190,10 +332,16 @@ export class EditorModalComponent implements OnInit, AfterViewInit, OnDestroy {
               .map(color => color.hex);
           }
           if (config['defaultFontSize']) {
-            this.defaultFontSize = config['defaultFontSize'];
+            // this.defaultFontSize = config['defaultFontSize'];
+            // Sicherstellen, dass 'px' dransteht, falls in config.json nur die Zahl 36 steht!
+            const rawSize = String(config['defaultFontSize']);
+            this.defaultFontSize = rawSize.endsWith('px') ? rawSize : `${rawSize}px`;
             this.currentFontSize = this.defaultFontSize;
           }
           document.documentElement.style.setProperty('--default-font-size', this.defaultFontSize);
+          if (this.editor?.view) {
+            this.updateCurrentFontSize();
+          }
         },
         error: (err) => {
           this.customColorPalette = this.colorGroups.
@@ -223,6 +371,54 @@ export class EditorModalComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     });
 
+    // <-- HIER: Äußere Breite, Höhe und Ausrichtung für die Tabelle ergänzen
+    myTableNodes.table = {
+      ...myTableNodes.table,
+      attrs: {
+        width: { default: '100%' },
+        height: { default: null },
+        marginLeft: { default: '0%' },
+        borderMode: { default: 'all' },        // 'all' | 'outer' | 'horizontal' | 'none'
+        borderStyle: { default: 'solid' },     // 'solid' | 'dashed' | 'dotted'
+        borderWidth: { default: '1px' },       // '1px' | '2px' | '4px'
+        borderColor: { default: 'currentColor' }
+      },
+      parseDOM: [{
+        tag: 'table',
+        getAttrs: (dom: HTMLElement) => ({
+          width: dom.style.width || dom.getAttribute('width') || '100%',
+          height: dom.style.height || null,
+          marginLeft: dom.style.marginLeft || '0%',
+          borderMode: dom.dataset['borderMode'] || 'all',
+          borderStyle: dom.style.getPropertyValue('--tbl-border-style').trim() || 'solid',
+          borderWidth: dom.style.getPropertyValue('--tbl-border-width').trim() || '1px',
+          borderColor: dom.style.getPropertyValue('--tbl-border-color').trim() || 'currentColor'
+        })
+      }],
+      toDOM: (node: any) => {
+        const styles: string[] = [];
+        if (node.attrs.width) styles.push(`width: ${node.attrs.width}`);
+        if (node.attrs.height) styles.push(`height: ${node.attrs.height}`);
+        if (node.attrs.marginLeft && node.attrs.marginLeft !== '0%') {
+          styles.push(`margin-left: ${node.attrs.marginLeft}`);
+        }
+        if (node.attrs.borderStyle && node.attrs.borderStyle !== 'solid') {
+          styles.push(`--tbl-border-style: ${node.attrs.borderStyle}`);
+        }
+        if (node.attrs.borderWidth && node.attrs.borderWidth !== '1px') {
+          styles.push(`--tbl-border-width: ${node.attrs.borderWidth}`);
+        }
+        if (node.attrs.borderColor && node.attrs.borderColor !== 'currentColor') {
+          styles.push(`--tbl-border-color: ${node.attrs.borderColor}`);
+        }
+
+        return ['table', {
+          'data-border-mode': node.attrs.borderMode || 'all',
+          style: styles.join('; ')
+        }, 0];
+      }
+    };
+
     const mySchema = new Schema({
       nodes: schema.spec.nodes.append(myTableNodes),
       marks: schema.spec.marks.append({
@@ -236,6 +432,34 @@ export class EditorModalComponent implements OnInit, AfterViewInit, OnDestroy {
             }
           }],
           toDOM: (mark: any) => ['span', { style: `font-size: ${mark.attrs.size};` }, 0]
+        },
+        fontWeight: {
+          attrs: { weight: { default: this.defaultFontWeight } },
+          parseDOM: [
+            {
+              tag: 'span[style*="font-weight"]',
+              getAttrs: (node: any) => {
+                const weight = node.style.fontWeight;
+                return weight ? { weight } : null;
+              }
+            },
+            // Optional: Falls alter Text noch <b> oder <strong> hat, als '700' erkennen
+            { tag: 'strong', getAttrs: () => ({ weight: '700' }) },
+            { tag: 'b', getAttrs: () => ({ weight: '700' }) }
+          ],
+          toDOM: (mark: any) => ['span', { style: `font-weight: ${mark.attrs.weight};` }, 0]
+        },
+        fontFamily: {
+          attrs: { family: { default: null } },
+          parseDOM: [{
+            tag: '[style*="font-family"]',
+            getAttrs: (node: any) => {
+              // Entfernt ggf. vom Browser hinzugefügte Anführungszeichen für sauberen Abgleich
+              const family = node.style.fontFamily;
+              return family ? { family } : null;
+            }
+          }],
+          toDOM: (mark: any) => ['span', { style: `font-family: ${mark.attrs.family};` }, 0]
         }
       })
     });
@@ -243,12 +467,125 @@ export class EditorModalComponent implements OnInit, AfterViewInit, OnDestroy {
     const doubleSpaceRule = new InputRule(/  $/, (state, match, start, end) => {
       return state.tr.insertText('\u00a0\u00a0', start, end); // \u00a0 ist das Unicode-Zeichen für &nbsp;
     });
+    const leadingSpaceRule = new InputRule(/^ $/, (state, match, start, end) => {
+      return state.tr.insertText('\u00a0', start, end);
+    });
+
+    // Hilfs-Plugin: Überträgt Farb-Marks & Text-Ausrichtung automatisch auf ALLE markierten Zellen
+    const multiCellFormatPlugin = new Plugin({
+      appendTransaction(transactions, oldState, newState) {
+        if (!(oldState.selection instanceof CellSelection)) return null;
+
+        const docChanged = transactions.some(tr => tr.docChanged);
+        if (!docChanged) return null;
+
+        let targetAlign: string | null | undefined = undefined;
+        const addedColorMarks: any[] = [];
+
+        transactions.forEach(tr => {
+          tr.steps.forEach((step: any) => {
+            // 1. AttrStep (wenn ngx-editor nur das align/textAlign-Attribut am Absatz ändert)
+            if (step.jsonID === 'attr' && (step.attr === 'align' || step.attr === 'textAlign')) {
+              targetAlign = step.value;
+            }
+            // 2. ReplaceStep / ReplaceAroundStep (falls Block ersetzt wurde)
+            if ((step.jsonID === 'replace' || step.jsonID === 'replaceAround') && step.slice?.content?.firstChild?.attrs) {
+              const attrs = step.slice.content.firstChild.attrs;
+              if (attrs.align !== undefined) targetAlign = attrs.align;
+              if (attrs.textAlign !== undefined) targetAlign = attrs.textAlign;
+            }
+            // 3. Farb-Marks (text_color / background_color)
+            if (step.jsonID === 'addMark' && step.mark) {
+              addedColorMarks.push(step.mark);
+            }
+          });
+        });
+
+        if (targetAlign === undefined && addedColorMarks.length === 0) return null;
+
+        const tr = newState.tr;
+        let modified = false;
+
+        oldState.selection.forEachCell((cell, pos) => {
+          // A) Textausrichtung auf alle Absätze in allen markierten Zellen übertragen
+          if (targetAlign !== undefined) {
+            cell.nodesBetween(0, cell.content.size, (node, innerPos) => {
+              if (node.isTextblock) {
+                const alignKey = 'textAlign' in node.attrs ? 'textAlign' : 'align';
+                if (node.attrs[alignKey] !== targetAlign) {
+                  tr.setNodeMarkup(pos + 1 + innerPos, undefined, {
+                    ...node.attrs,
+                    [alignKey]: targetAlign
+                  });
+                  modified = true;
+                }
+              }
+            });
+          }
+
+          // B) Farb-Marks auf alle markierten Zellen anwenden
+          if (addedColorMarks.length > 0) {
+            const from = pos + 1;
+            const to = pos + cell.nodeSize - 1;
+            if (from < to) {
+              addedColorMarks.forEach(mark => {
+                tr.addMark(from, to, mark);
+                modified = true;
+              });
+            }
+          }
+        });
+
+        return modified ? tr : null;
+      }
+    });
+
+    const preserveSelectionOnRightClick = new Plugin({
+      props: {
+        handleDOMEvents: {
+          mousedown: (view, event: MouseEvent) => {
+            // Nur Rechtsklick (button === 2) prüfen
+            if (event.button !== 2) return false;
+
+            const target = event.target as HTMLElement | null;
+            const cell = target?.closest('td, th');
+
+            // Wenn bereits eine Mehrfachauswahl aktiv ist UND der Rechtsklick in einer markierten Zelle erfolgt:
+            if (cell?.classList.contains('selectedCell') && view.state.selection instanceof CellSelection) {
+              event.preventDefault();
+              return true; // <-- Zwingt ProseMirror, das Event zu ignorieren und die Auswahl zu behalten!
+            }
+
+            return false;
+          }
+        }
+      }
+    });
 
     this.editor = new Editor({
       schema: mySchema,
+      nodeViews: {
+        table: (node, view, getPos) => new ResizableTableView(node, view, getPos, () => this.disableOkBtn(false))
+      },
       plugins: [
-        tableEditing(), // Dein bestehendes Tabellen-Plugin
-        inputRules({ rules: [doubleSpaceRule] }),
+        columnResizing({
+          handleWidth: 6,          // Breite des Greifbereichs auf der Spaltenlinie (in px)
+          cellMinWidth: 40,        // Mindestbreite einer Spalte (in px)
+          lastColumnResizable: true
+        }),
+        tableEditing(),
+        preserveSelectionOnRightClick,
+        multiCellFormatPlugin,
+        keymap({
+          Tab: goToNextCell(1),
+          'Shift-Tab': goToNextCell(-1),
+        }),
+        inputRules({
+          rules: [
+            leadingSpaceRule,
+            doubleSpaceRule
+          ]
+        }),
       ]
     });
 
@@ -297,13 +634,21 @@ export class EditorModalComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     if (this.type === 'text') {
-      // Wartet, bis die Öffnungs-Animation des ng-zorro Modals komplett beendet ist
+      // 1. Werte sofort nach dem Rendern synchronisieren
+      setTimeout(() => {
+        this.updateCurrentFontFamily();
+        this.updateCurrentFontSize();
+        this.updateCurrentFontWeight();
+        this.updateCurrentBlockType();
+        this.updateEditorContrast();
+        this.cdr.detectChanges();
+      }, 150);
+
+      // 2. Fokus erst NACH Ende der Modal-Animation erzwingen, damit NzModal ihn nicht wieder klaut
       this.subscriptions.push(
         this.modalRef.afterOpen.subscribe(() => {
           setTimeout(() => {
             this.editor?.view?.focus();
-            this.updateCurrentFontSize();
-            this.updateEditorContrast(); // <-- Prüft bei jeder Änderung den Kontrast
           }, 50);
         })
       );
@@ -317,29 +662,160 @@ export class EditorModalComponent implements OnInit, AfterViewInit, OnDestroy {
 
   beforeUpload = (file: NzUploadFile): boolean => {
     this.fileList = [file];
-    const isLtLimit = (file.size! / 1024 / 1024) < this.MAX_FILE_SIZE_MB;
+
+    let actualFile: File | null = null;
+    if (file instanceof File) {
+      actualFile = file;
+    } else if (file.originFileObj) {
+      actualFile = file.originFileObj;
+    }
+
+    if (!actualFile) return false;
+
+    this.rawSelectedFile = actualFile;
+
+    if (!actualFile.type.startsWith('image/')) {
+      this.isOversizedImage = false;
+      this.imageDimensionsInfo = '';
+      this.finalizeFileSelection(actualFile);
+      return false;
+    }
+
+    // Beim Auswählen einer neuen Datei: Voreinstellung anhand der echten Bildmaße ermitteln
+    this.initImageSelection(actualFile);
+    return false;
+  };
+
+  private async initImageSelection(file: File): Promise<void> {
+    const img = await this.loadImageFromFile(file);
+    this.isOversizedImage = img.naturalWidth > 1920 || img.naturalHeight > 1080;
+
+    // Nur wenn das Bild größer als 1920x1080 ist, wird 'max' vorausgewählt – sonst immer 'original'!
+    this.resizeMode = this.isOversizedImage ? 'max' : 'original';
+
+    await this.processSelectedImage();
+  }
+
+  async processSelectedImage(): Promise<void> {
+    if (!this.rawSelectedFile) return;
+
+    const file = this.rawSelectedFile;
+    const img = await this.loadImageFromFile(file);
+    const origW = img.naturalWidth;
+    const origH = img.naturalHeight;
+
+    const maxW = 1920;
+    const maxH = 1080;
+
+    // 1. Wenn "Originalgröße" gewählt oder Bild bereits kleiner/gleich 1920x1080 ist
+    if (this.resizeMode === 'original' || (origW <= maxW && origH <= maxH)) {
+      this.finalImageSize = { width: origW, height: origH }; // <-- Hier origW / origH setzen!
+      this.imageDimensionsInfo = `Ausgabe: ${origW} × ${origH} px (Original)`;
+      this.finalizeFileSelection(file);
+      return;
+    }
+
+    // 2. Proportional auf max. 1920x1080 herunterrechnen
+    const ratio = Math.min(maxW / origW, maxH / origH);
+    const targetW = Math.round(origW * ratio);
+    const targetH = Math.round(origH * ratio);
+    this.finalImageSize = { width: targetW, height: targetH }; // <-- Hier die skalierten targetW / targetH setzen!
+
+    const canvas = document.createElement('canvas');
+    canvas.width = targetW;
+    canvas.height = targetH;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      this.finalImageSize = { width: origW, height: origH };
+      this.finalizeFileSelection(file);
+      return;
+    }
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, targetW, targetH);
+
+    // Transparenz bei PNG/WebP erhalten, Fotos als hochwertiges JPEG speichern
+    const outputType = (file.type === 'image/png' || file.type === 'image/webp')
+      ? file.type
+      : 'image/jpeg';
+
+    const blob = await new Promise<Blob | null>(resolve =>
+      canvas.toBlob(resolve, outputType, 0.9)
+    );
+
+    if (!blob) {
+      this.finalizeFileSelection(file);
+      return;
+    }
+
+    const resizedFile = new File([blob], file.name, {
+      type: outputType,
+      lastModified: Date.now()
+    });
+
+    this.imageDimensionsInfo = `Original: ${origW} × ${origH} px → Optimiert: ${targetW} × ${targetH} px`;
+    this.finalizeFileSelection(resizedFile);
+  }
+
+  private finalizeFileSelection(file: File): void {
+    const isLtLimit = (file.size / 1024 / 1024) < this.MAX_FILE_SIZE_MB;
 
     if (!isLtLimit) {
-      // Fehler: Datei zu groß
       this.notify.createNotification(
         'warning',
         'Server-Meldung',
-        `Bild muss kleiner als ${this.MAX_FILE_SIZE_MB}MB sein!`,
+        `Datei muss kleiner als ${this.MAX_FILE_SIZE_MB}MB sein!`
       );
-      this.handleRemove(); // Alles zurücksetzen & Button sperren
-      return false;
+      this.selectedFile = null;
+      if (this.previewUrl) {
+        URL.revokeObjectURL(this.previewUrl);
+        this.previewUrl = null;
+      }
+      this.disableOkBtn(true);
+      this.cdr.detectChanges();
+      return;
     }
-    if (file instanceof File) {
-      this.selectedFile = file;
-    } else if (file.originFileObj) {
-      this.selectedFile = file.originFileObj;
+
+    if (this.previewUrl) {
+      URL.revokeObjectURL(this.previewUrl);
     }
-    if (this.selectedFile) {
-      // Vorschau-URL für das Modal erstellen
-      this.previewUrl = URL.createObjectURL(this.selectedFile);
-      this.disableOkBtn(false);
+    this.selectedFile = file;
+    this.previewUrl = URL.createObjectURL(file);
+    this.disableOkBtn(false);
+    this.cdr.detectChanges();
+  }
+
+  private loadImageFromFile(file: File): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        resolve(img);
+      };
+      img.onerror = (err) => {
+        URL.revokeObjectURL(url);
+        reject(err);
+      };
+      img.src = url;
+    });
+  }
+
+  handleRemove = (): boolean => {
+    this.fileList = [];
+    this.selectedFile = null;
+    this.rawSelectedFile = null;
+    this.imageDimensionsInfo = '';
+    this.finalImageSize = null;
+
+    if (this.previewUrl) {
+      URL.revokeObjectURL(this.previewUrl);
+      this.previewUrl = null;
     }
-    return false;
+    this.disableOkBtn(true);
+    return true;
   };
 
   apply(): any {
@@ -347,12 +823,11 @@ export class EditorModalComponent implements OnInit, AfterViewInit, OnDestroy {
       return this.editorText;
     }
     if (this.type === 'file' && this.selectedFile) {
-      if (this.selectedFile) {
-        return {
-          file: this.selectedFile,
-          previewUrl: this.previewUrl
-        };
-      }
+      return {
+        file: this.selectedFile,
+        previewUrl: this.previewUrl,
+        dimensions: this.finalImageSize
+      };
     }
     if (this.type === 'color') {
       return this.selectedColor;
@@ -363,17 +838,267 @@ export class EditorModalComponent implements OnInit, AfterViewInit, OnDestroy {
     return false; // Verhindert Schließen, wenn nichts gewählt wurde
   }
 
-  handleRemove = (): boolean => {
-    this.fileList = [];
-    this.selectedFile = null;
-    // Wichtig: Die temporäre URL freigeben, um Speicherlecks zu vermeiden
-    if (this.previewUrl) {
-      URL.revokeObjectURL(this.previewUrl);
-      this.previewUrl = null;
+  /**
+  * Wendet ein Mark (z. B. bold, italic, text_color, font_size) auf alle markierten Zellen an
+  */
+  applyMarkToSelection(markType: MarkType, attrs: Record<string, any> | null = null): void {
+    const { state, dispatch } = this.editor.view;
+    const { selection, tr } = state;
+
+    if (selection instanceof CellSelection) {
+      selection.forEachCell((cell, pos) => {
+        const from = pos + 1;
+        const to = pos + cell.nodeSize - 1;
+        if (attrs) {
+          tr.addMark(from, to, markType.create(attrs));
+        } else {
+          tr.removeMark(from, to, markType);
+        }
+      });
+      dispatch(tr);
+      this.editor.view.focus();
     }
-    this.disableOkBtn(true);
-    return true; // Erlaubt das Entfernen aus der UI-Liste
-  };
+  }
+
+  /**
+  * Wendet Block-Attribute (z. B. textAlign: 'center') auf alle Absätze in allen markierten Zellen an
+  */
+  applyAlignmentToCells(align: 'left' | 'center' | 'right' | 'justify'): void {
+    const { state, dispatch } = this.editor.view;
+    const { selection, tr } = state;
+
+    if (selection instanceof CellSelection) {
+      selection.forEachCell((cell, pos) => {
+        cell.nodesBetween(0, cell.content.size, (node, innerPos) => {
+          if (node.isTextblock) {
+            tr.setNodeMarkup(pos + 1 + innerPos, undefined, {
+              ...node.attrs,
+              align
+            });
+          }
+        });
+      });
+      dispatch(tr);
+      this.editor.view.focus();
+    }
+  }
+
+  setExactFontFamily(newFamily: string): void {
+    if (!this.editor?.view) return;
+
+    const { state, dispatch } = this.editor.view;
+    const markType: MarkType = state.schema.marks['fontFamily'];
+    if (!markType) return;
+
+    const { from, to, empty } = state.selection;
+    this.currentFontFamily = newFamily || '';
+    const tr = state.tr;
+
+    if (!newFamily) {
+      if (empty) {
+        tr.removeStoredMark(markType);
+      } else {
+        tr.removeMark(from, to, markType);
+      }
+    } else {
+      if (empty) {
+        tr.addStoredMark(markType.create({ family: newFamily }));
+      } else {
+        tr.removeMark(from, to, markType);
+        tr.addMark(from, to, markType.create({ family: newFamily }));
+      }
+    }
+    dispatch(tr);
+    this.editor.view.focus();
+
+    if (!empty) {
+      this.disableOkBtn(false); // <-- NEU
+    }
+  }
+
+  updateCurrentFontFamily(): void {
+    if (!this.editor?.view) return;
+
+    const { state } = this.editor.view;
+    const markType: MarkType = state.schema.marks['fontFamily'];
+    const { from, to, empty, $from } = state.selection;
+
+    let foundFamily = '';
+
+    if (!empty) {
+      state.doc.nodesBetween(from, to, (node) => {
+        const familyMark = node.marks.find(m => m.type === markType);
+        if (familyMark) {
+          foundFamily = familyMark.attrs['family'];
+        }
+      });
+    } else {
+      // 1. Wenn explizit ein Mark für das nächste Zeichen vorgemerkt wurde (z.B. gerade im Dropdown gewählt)
+      if (state.storedMarks) {
+        const stored = state.storedMarks.find(m => m.type === markType);
+        foundFamily = stored ? stored.attrs['family'] : '';
+      } else if ($from.nodeAfter) {
+        // 2. Entscheidend: Was steht RECHTS vom Cursor (z.B. "YOGA")?
+        // Wenn "YOGA" kein fontFamily-Mark hat, bleibt foundFamily leer ('') = Standard!
+        const rightMark = $from.nodeAfter.marks.find(m => m.type === markType);
+        foundFamily = rightMark ? rightMark.attrs['family'] : '';
+      } else {
+        // 3. Cursor steht ganz am Ende der Zeile -> Marks von links übernehmen
+        const leftMark = $from.marks().find(m => m.type === markType);
+        foundFamily = leftMark ? leftMark.attrs['family'] : '';
+      }
+
+      // 4. Nur wenn der Cursor ganz am Anfang eines Absatzes steht und rechts noch ein Leerzeichen liegt
+      if (!foundFamily && $from.parentOffset === 0 && $from.parent) {
+        $from.parent.forEach((child) => {
+          if (!foundFamily && child.isText) {
+            const found = child.marks.find(m => m.type === markType);
+            if (found) foundFamily = found.attrs['family'];
+          }
+        });
+      }
+    }
+
+    const normalizeFont = (str: string) =>
+      str.replace(/["']/g, '').replace(/\s*,\s*/g, ',').trim().toLowerCase();
+
+    const match = this.allFontFamilies.find(
+      f => normalizeFont(f.value) === normalizeFont(foundFamily)
+    );
+    this.currentFontFamily = match ? match.value : '';
+  }
+
+  setBlockTypeOption(value: string): void {
+    const view = this.editor?.view;
+    if (!view) return;
+
+    const { state, dispatch } = view;
+    this.currentBlockType = value;
+
+    if (value === 'paragraph') {
+      const paragraphType = state.schema.nodes['paragraph'];
+      if (paragraphType) {
+        setBlockType(paragraphType)(state, dispatch);
+      }
+    } else if (value.startsWith('h')) {
+      const level = Number(value.replace('h', ''));
+      const headingType = state.schema.nodes['heading'];
+      if (headingType) {
+        setBlockType(headingType, { level })(state, dispatch);
+      }
+    }
+    this.updateCurrentFontSize();
+    view.focus();
+  }
+
+  updateCurrentBlockType(): void {
+    if (!this.editor?.view) return;
+
+    const { $from } = this.editor.view.state.selection;
+    const parent = $from.parent;
+
+    if (parent?.type.name === 'heading') {
+      this.currentBlockType = `h${parent.attrs['level']}`;
+    } else {
+      this.currentBlockType = 'paragraph';
+    }
+  }
+
+  /**
+  * Setzt das im Dropdown gewählte font-weight auf die Auswahl
+  */
+  setExactFontWeight(newWeight: string): void {
+    if (!this.editor?.view) return;
+
+    const { state, dispatch } = this.editor.view;
+    const markType: MarkType = state.schema.marks['fontWeight'];
+    if (!markType) return;
+
+    const { from, to, empty } = state.selection;
+    this.currentFontWeight = newWeight || this.defaultFontWeight;
+    const tr = state.tr;
+
+    if (!newWeight || newWeight === this.defaultFontWeight) {
+      // Standard gewählt -> Mark entfernen
+      if (empty) {
+        tr.removeStoredMark(markType);
+      } else {
+        tr.removeMark(from, to, markType);
+      }
+    } else {
+      // Gewünschtes font-weight setzen
+      if (empty) {
+        tr.addStoredMark(markType.create({ weight: newWeight }));
+      } else {
+        tr.removeMark(from, to, markType);
+        tr.addMark(from, to, markType.create({ weight: newWeight }));
+      }
+    }
+    dispatch(tr);
+    this.editor.view.focus();
+
+    if (!empty) {
+      this.disableOkBtn(false); // <-- NEU
+    }
+  }
+
+  /**
+   * Liest das aktuelle font-weight an der Cursor-Position aus (für das Dropdown)
+   */
+  updateCurrentFontWeight(): void {
+    if (!this.editor?.view) return;
+
+    const { state } = this.editor.view;
+    const markType: MarkType = state.schema.marks['fontWeight'];
+    if (!markType) return;
+
+    const { from, to, empty, $from } = state.selection;
+    let foundWeight = '';
+
+    if (!empty) {
+      // Fall 1: Text ist markiert
+      state.doc.nodesBetween(from, to, (node) => {
+        const weightMark = node.marks.find(m => m.type === markType);
+        if (weightMark) {
+          foundWeight = weightMark.attrs['weight'];
+        }
+      });
+    } else {
+      // Fall 2: Cursor blinkt ohne Markierung
+      if (state.storedMarks) {
+        // 1. Explizit im Dropdown gewähltes Mark für das nächste Zeichen
+        const stored = state.storedMarks.find(m => m.type === markType);
+        foundWeight = stored ? stored.attrs['weight'] : '';
+      } else if ($from.nodeAfter) {
+        // 2. Zeichen rechts vom Cursor prüfen (verhindert Hängenbleiben am vorherigen Wort)
+        const rightMark = $from.nodeAfter.marks.find(m => m.type === markType);
+        foundWeight = rightMark ? rightMark.attrs['weight'] : '';
+      } else {
+        // 3. Ganz am Zeilenende -> Marks von links übernehmen
+        const leftMark = $from.marks().find(m => m.type === markType);
+        foundWeight = leftMark ? leftMark.attrs['weight'] : '';
+      }
+
+      // 4. Nur am absoluten Zeilenanfang im gesamten Absatz nach dem ersten Mark suchen
+      if (!foundWeight && $from.parentOffset === 0 && $from.parent) {
+        $from.parent.forEach((child) => {
+          if (!foundWeight && child.isText) {
+            const found = child.marks.find(m => m.type === markType);
+            if (found) {
+              foundWeight = found.attrs['weight'];
+            }
+          }
+        });
+      }
+    }
+
+    // Falls ein Wert wie 'bold' oder 'normal' aus altem HTML kommt, auf Zahlenwert mappen
+    if (foundWeight === 'bold') foundWeight = '700';
+    if (foundWeight === 'normal') foundWeight = '400';
+
+    const match = this.fontWeights.find(fw => fw.value === foundWeight);
+    this.currentFontWeight = match ? match.value : this.defaultFontWeight;
+  }
 
   resetToParagraph(event: MouseEvent): void {
     // 1. Wichtig: Verhindert, dass der Editor den Fokus verliert
@@ -404,16 +1129,34 @@ export class EditorModalComponent implements OnInit, AfterViewInit, OnDestroy {
     return $from.parent.type.name === 'paragraph';
   }
 
+  // onTextChange(htmlOutput: string) {
+  //   this.editorText = htmlOutput;
+  //   if (this.initText) {
+  //     this.disableOkBtn(true);
+  //     this.initText = false;
+  //   } else {
+  //     this.disableOkBtn(false);
+  //     this.editorText = htmlOutput;
+  //   }
+  //   this.updateEditorContrast(); // <-- Prüft bei jeder Änderung den Kontrast
+  // }
+
   onTextChange(htmlOutput: string) {
     this.editorText = htmlOutput;
     if (this.initText) {
       this.disableOkBtn(true);
       this.initText = false;
+      // NEU: Sobald der initiale HTML-Text geladen ist, Toolbar-Anzeigen synchronisieren
+      setTimeout(() => {
+        this.updateCurrentFontFamily();
+        this.updateCurrentFontSize();
+        this.updateCurrentFontWeight();
+        this.updateCurrentBlockType();
+      });
     } else {
       this.disableOkBtn(false);
-      this.editorText = htmlOutput;
     }
-    this.updateEditorContrast(); // <-- Prüft bei jeder Änderung den Kontrast
+    this.updateEditorContrast();
   }
 
   /**
@@ -440,6 +1183,10 @@ export class EditorModalComponent implements OnInit, AfterViewInit, OnDestroy {
 
     dispatch(tr);
     this.editor.view.focus();
+
+    if (!empty) {
+      this.disableOkBtn(false); // <-- NEU
+    }
   }
 
   private ensureFontSizeInList(sizeStr: string): void {
@@ -451,6 +1198,8 @@ export class EditorModalComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   updateCurrentFontSize(): void {
+    if (!this.editor?.view) return;
+
     const { state } = this.editor.view;
     const markType: MarkType = state.schema.marks['fontSize'];
     const { from, to, empty, $from } = state.selection;
@@ -458,11 +1207,15 @@ export class EditorModalComponent implements OnInit, AfterViewInit, OnDestroy {
     let currentSizeStr = '';
     let parentTagName = 'p';
 
-    // 1. Fall: Text ist markiert (Auswahl ist nicht leer)
+    // Umschließenden Block-Typ ermitteln (gilt für Markierung & Cursor)
+    if ($from.parent && $from.parent.type.name === 'heading') {
+      parentTagName = `h${$from.parent.attrs['level']}`;
+    }
+
     if (!empty) {
+      // Fall 1: Text ist markiert
       state.doc.nodesBetween(from, to, (node) => {
-        const marks = node.marks;
-        const fontSizeMark = marks.find(m => m.type === markType);
+        const fontSizeMark = node.marks.find(m => m.type === markType);
         if (fontSizeMark) {
           currentSizeStr = fontSizeMark.attrs['size'];
         }
@@ -471,29 +1224,38 @@ export class EditorModalComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       });
     } else {
-      // 2. Fall: Keine Auswahl, der Cursor blinkt nur
-      // Wir prüfen die Marks direkt an der aktuellen Cursor-Position
-      const storedMarks = state.storedMarks || $from.marks();
-      let fontSizeMark = storedMarks.find(m => m.type === markType);
+      // Fall 2: Cursor blinkt ohne Markierung
+      let fontSizeMark: Mark | undefined;
 
-      // NEU: Wenn am Zeilenanfang links noch kein Mark ist, schauen wir rechts auf den ersten Buchstaben
-      if (!fontSizeMark && $from.nodeAfter) {
+      if (state.storedMarks) {
+        // 1. Gerade im Dropdown gewählte Größe für das nächste Zeichen
+        fontSizeMark = state.storedMarks.find(m => m.type === markType);
+      } else if ($from.nodeAfter) {
+        // 2. Entscheidend: Zeichen RECHTS vom Cursor zuerst prüfen!
         fontSizeMark = $from.nodeAfter.marks.find(m => m.type === markType);
+      } else {
+        // 3. Ganz am Zeilenende -> Größe von links übernehmen
+        fontSizeMark = $from.marks().find(m => m.type === markType);
       }
+
+      // 4. Nur am absoluten Zeilenanfang im gesamten Absatz nach dem ersten fontSize-Mark suchen
+      if (!fontSizeMark && $from.parentOffset === 0 && $from.parent) {
+        $from.parent.forEach((child) => {
+          if (!fontSizeMark && child.isText) {
+            const found = child.marks.find(m => m.type === markType);
+            if (found) {
+              fontSizeMark = found;
+            }
+          }
+        });
+      }
+
       if (fontSizeMark) {
         currentSizeStr = fontSizeMark.attrs['size'];
       }
-
-      // Umschließenden Block-Typ ermitteln
-      if ($from.parent && $from.parent.type.name === 'heading') {
-        parentTagName = `h${$from.parent.attrs['level']}`;
-      }
     }
 
-    // Deine funktionierende Hilfsmethode nutzen, um die Zahl zu berechnen
     const sizeNum = this.getCurrentSizeNum(currentSizeStr, parentTagName);
-
-    // Wert an die Toolbar übergeben
     this.currentFontSize = `${sizeNum}px`;
     this.ensureFontSizeInList(this.currentFontSize);
   }
@@ -910,6 +1672,7 @@ export class EditorModalComponent implements OnInit, AfterViewInit, OnDestroy {
     this.plans.push(newPlan);
     this.plans = [...this.plans];
     this.selectRow(newPlan);
+    // this.checkForInterval();
   }
 
   removePlan(sort: number) {
@@ -945,6 +1708,7 @@ export class EditorModalComponent implements OnInit, AfterViewInit, OnDestroy {
       this.createPlan();
     }
     this.disableOkBtn(false);
+    // this.checkForInterval();
   }
 
   disableOkBtn(value: boolean) {
@@ -953,5 +1717,200 @@ export class EditorModalComponent implements OnInit, AfterViewInit, OnDestroy {
       nzOkDisabled: value
     });
   }
+
+  onEditorContextMenu(event: MouseEvent, menu: NzDropdownMenuComponent): void {
+    if (this.isInTable) {
+      event.preventDefault();
+      this.isContextMenuOpen = true;
+      const ref = this.nzContextMenuService.create(event, menu);
+      ref.onDestroy(() => {
+        this.isContextMenuOpen = false;
+      });
+    }
+  }
+
+  insertTable(rows: number, cols: number): void {
+    const { state, dispatch } = this.editor.view;
+    const { table, table_row, table_cell, paragraph } = state.schema.nodes;
+    if (!table) return;
+
+    const rowNodes = [];
+    for (let r = 0; r < rows; r++) {
+      const cellNodes = [];
+      for (let c = 0; c < cols; c++) {
+        cellNodes.push(table_cell.createAndFill()!);
+      }
+      rowNodes.push(table_row.create(null, cellNodes));
+    }
+
+    const newTable = table.create(null, rowNodes);
+    const nodes = paragraph ? [newTable, paragraph.create()] : [newTable];
+    const fragment = Fragment.from(nodes);
+
+    const insertPos = state.selection.from;
+    const tr = state.tr.replaceSelection(new Slice(fragment, 0, 0));
+
+    // Cursor direkt in die allererste Zelle oben links setzen
+    const firstCellPos = Math.min(insertPos + 3, tr.doc.content.size);
+    tr.setSelection(TextSelection.near(tr.doc.resolve(firstCellPos)));
+
+    dispatch(tr.scrollIntoView());
+
+    this.disableOkBtn(false);
+    this.tableMenuVisible = false;
+    this.hoverRows = 0;
+    this.hoverCols = 0;
+    this.editor.view.focus();
+  }
+
+  execTableCmd(cmd: 'rowBefore' | 'rowAfter' | 'delRow' | 'colBefore' | 'colAfter' | 'delCol' | 'delTable'): void {
+    const { state, dispatch } = this.editor.view;
+    const commands = {
+      rowBefore: addRowBefore,
+      rowAfter: addRowAfter,
+      delRow: deleteRow,
+      colBefore: addColumnBefore,
+      colAfter: addColumnAfter,
+      delCol: deleteColumn,
+      delTable: deleteTable,
+    };
+
+    commands[cmd](state, dispatch);
+    this.tableMenuVisible = false;
+    this.disableOkBtn(false);
+    this.editor.view.focus();
+  }
+
+  setTableBorder(patch: {
+    borderMode?: string;
+    borderStyle?: string;
+    borderWidth?: string;
+    borderColor?: string;
+  }, keepMenuOpen = false): void {
+    const { state, dispatch } = this.editor.view;
+    const { $head } = state.selection;
+
+    for (let d = $head.depth; d > 0; d--) {
+      const node = $head.node(d);
+      if (node.type.name === 'table') {
+        const nextAttrs = { ...node.attrs, ...patch };
+        if ((patch.borderStyle || patch.borderWidth || patch.borderColor) && nextAttrs.borderMode === 'none') {
+          nextAttrs.borderMode = 'all';
+        }
+        dispatch(state.tr.setNodeMarkup($head.before(d), undefined, nextAttrs));
+        this.disableOkBtn(false);
+        break;
+      }
+    }
+
+    if (!keepMenuOpen) {
+      this.nzContextMenuService.close();
+      this.isContextMenuOpen = false;
+      this.tableMenuVisible = false;
+      this.editor.view.focus();
+    }
+  }
+
+  setCellBackgroundColor(color: string | null): void {
+    const { state, dispatch } = this.editor.view;
+    setCellAttr('background', color)(state, dispatch);
+    this.editor.view.focus();
+    this.disableOkBtn(false);
+  }
+
+
+
+  /////////////////// Cell-BackgroundColor
+  pickerTarget: 'border' | 'cell' = 'border';
+  currentPickerColor = '#000000';
+  private savedCellSelection: CellSelection | null = null;
+  currentCellBgColor = '#e6f7ff';
+
+  openColorPicker(target: 'border' | 'cell', event?: MouseEvent): void {
+    this.pickerTarget = target;
+
+    if (target === 'cell') {
+      const sel = this.editor?.view?.state.selection;
+      this.savedCellSelection = sel instanceof CellSelection ? sel : null;
+      this.currentPickerColor = this.currentCellBgColor;
+    } else {
+      this.savedCellSelection = null;
+      this.currentPickerColor = this.currentTableBorderColor;
+    }
+
+    if (event) {
+      this.pickerPos = {
+        x: Math.min(window.innerWidth - 260, Math.max(16, event.clientX - 100)),
+        y: Math.min(window.innerHeight - 360, Math.max(16, event.clientY + 8))
+      };
+    }
+
+    this.nzContextMenuService.close();
+    this.isContextMenuOpen = false;
+
+    setTimeout(() => {
+      this.borderPickerTrigger?.openDialog();
+    }, 50);
+  }
+
+  onPickerColorUpdate(color: string, closeAfter: boolean): void {
+    this.currentPickerColor = color;
+
+    if (this.pickerTarget === 'border') {
+      this.currentTableBorderColor = color;
+      this.setTableBorder({ borderColor: color }, !closeAfter);
+    } else {
+      // Zell-Hintergrundfarbe auf aktive oder gemerkte Mehrfachauswahl anwenden
+      const { state, dispatch } = this.editor.view;
+      if (!(state.selection instanceof CellSelection) && this.savedCellSelection) {
+        dispatch(state.tr.setSelection(this.savedCellSelection));
+      }
+      setCellAttr('background', color)(this.editor.view.state, this.editor.view.dispatch);
+      this.disableOkBtn(false);
+    }
+
+    if (closeAfter) {
+      this.currentCellBgColor = color;
+      this.borderPickerTrigger?.closeDialog();
+      this.isBorderPickerOpen = false;
+      this.editor.view.focus();
+    }
+  }
+
+  resetPickerColor(): void {
+    if (this.pickerTarget === 'border') {
+      this.currentTableBorderColor = '#000000';
+      this.setTableBorder({ borderColor: 'currentColor' }, false);
+    } else {
+      const { state, dispatch } = this.editor.view;
+      if (!(state.selection instanceof CellSelection) && this.savedCellSelection) {
+        dispatch(state.tr.setSelection(this.savedCellSelection));
+      }
+      setCellAttr('background', null)(this.editor.view.state, this.editor.view.dispatch);
+      this.disableOkBtn(false);
+    }
+    this.borderPickerTrigger?.closeDialog();
+    this.isBorderPickerOpen = false;
+    this.editor.view.focus();
+  }
+
+
+  ////////////////////// war vorher da
+  // openBorderColorPicker(event?: MouseEvent): void {
+  //   if (event) {
+  //     // Position des Klicks (leicht nach links/unten versetzt, damit der Picker nicht am rechten Rand klebt)
+  //     this.pickerPos = {
+  //       x: Math.min(window.innerWidth - 260, Math.max(16, event.clientX - 100)),
+  //       y: Math.min(window.innerHeight - 360, Math.max(16, event.clientY + 8))
+  //     };
+  //   }
+
+  //   this.nzContextMenuService.close();
+  //   this.isContextMenuOpen = false;
+
+  //   setTimeout(() => {
+  //     this.borderPickerTrigger?.openDialog();
+  //   }, 50);
+  // }
 
 }

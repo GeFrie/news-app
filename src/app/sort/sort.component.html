@@ -1,36 +1,45 @@
 <h3>Reihenfolge festlegen</h3>
 
 <div cdkDropList cdkDropListOrientation="mixed" [cdkDropListData]="sortedItems" id="sort-list"
-    (cdkDropListDropped)="onDrop($event)" class="drop-zone">
+  (cdkDropListDropped)="onDrop($event)" class="drop-zone">
 
-    <div class="drop-placeholder">
-        @if (sortedItems.length === 0){
-        <span nz-icon nzType="plus-circle" nzTheme="outline"></span>
-        <!-- <span nz-icon nzType="inbox" nzTheme="outline"></span> -->
-        <p>Hierher ziehen</p>
-        }
-    </div>
-
-    @for (item of sortedItems; track item.id) {
-
-    <div class="item" cdkDrag (click)="selectItem(item)" [class.selected]="(selectedItem | async)?.id === item.id"
-        [style.background]="($safeNavigationMigration(item?.hintergrund) | isColor) ? item?.hintergrund : 'none'"
-        (cdkDragStarted)="onDragStarted()" (cdkDragEnded)="onDragEnded()">
-
-        @if (!(item.hintergrund | isColor)) {
-        @if (item.mediaType === 'image') {
-        <img [src]="item.hintergrund | imageUrl" class="fill" [alt]="`News #${item.id}`">
-        }
-        @if (item.mediaType === 'pdf') {
-        <iframe [src]="item.hintergrund | imageUrl | safeUrl" class="fill"></iframe>
-        }
-        }
-
-        <div class="message preview-scaled" [innerHTML]="item.text | safeHtml" style="pointer-events: none;"></div>
-
-        <!-- 4. Der Platzhalter (Die "Lücke" beim Verschieben) -->
-        <div *cdkDragPlaceholder></div>
-
-    </div>
+  <div class="drop-placeholder">
+    @if (sortedItems.length === 0) {
+    <span nz-icon nzType="plus-circle" nzTheme="outline"></span>
+    <p>Hierher ziehen</p>
     }
+  </div>
+
+  @for (item of sortedItems; track item.id) {
+
+  <div class="item" cdkDrag (click)="selectItem(item)" [class.selected]="(selectedItem | async)?.id === item.id"
+    [style.background]="item.bgColor || 'transparent'" (cdkDragStarted)="onDragStarted()"
+    (cdkDragEnded)="onDragEnded()">
+
+    <div class="sort-stage">
+      @if (item.mediaType === 'pdf' && (item.hintergrund | imageUrl); as pdfSrc) {
+      <iframe [src]="pdfSrc | safeUrl" class="fill"></iframe>
+      } @else {
+      @for (img of item.imageBoxes ?? []; track img.id) {
+      @if (img.src | imageUrl; as imgSrc) {
+      <div class="image-wrapper is-positioned" [style.left.%]="img.left" [style.top.%]="img.top"
+        [style.width.%]="img.width" [style.height.%]="img.height" [style.opacity]="img.opacity ?? 1"
+        [style.z-index]="img.zIndex ?? 1">
+        <img [src]="imgSrc" class="fill" [alt]="`Bild ${img.id}`" decoding="async">
+      </div>
+      }
+      }
+      }
+
+      <div class="message news-content-output" [class.is-positioned]="!!item.textBox"
+        [style.left.%]="item.textBox?.left ?? null" [style.top.%]="item.textBox?.top ?? null"
+        [style.width.%]="item.textBox?.width ?? null" [style.height.%]="item.textBox?.height ?? null"
+        [innerHTML]="item.text | safeHtml"></div>
+    </div>
+
+    <!-- 4. Der Platzhalter (Die "Lücke" beim Verschieben) -->
+    <div *cdkDragPlaceholder></div>
+
+  </div>
+  }
 </div>

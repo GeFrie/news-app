@@ -1,0 +1,7 @@
+
+############# Editor #############
+- Datei einfügen    --> PDF wird mit PDF-Viewer angezeigt
+
+############# ngxEditor ##########
+- Tabelle Rahmenfarbe abbrechen setzt schwarzen Rahmenfarbe
+- Tabelle wenn Zellhintergrund gesetzt ist die Zell-Markierung nicht mehr sichtbar (oder hat die bgColor?)

@@ -15,7 +15,8 @@ export class ImageUrlPipe implements PipeTransform {
   transform(value: string | null | undefined): string {
     // 1. Wenn gar kein Wert da ist -> Fallback
     if (!value || value.trim() === '') {
-      return this.fallback;
+      // return this.fallback;
+      return '';
     }
 
     // 2. Wenn es bereits eine vollständige URL (http) oder Base64 (data:) ist -> direkt zurückgeben

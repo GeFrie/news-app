@@ -1,12 +1,102 @@
-.message-preview {
+.main {
+    align-items: center;
+    aspect-ratio: 16 / 9;
+    background-color: transparent;
+    display: flex;
+    justify-content: center;
+    //   position: relative; // Wichtig, damit left/top % sich auf .main beziehen!
+    position: relative !important;
+    overflow: hidden;
+    overflow: hidden;
+    box-sizing: border-box;
+
+    &.show-frame {
+        border: 1px solid gray;
+    }
+}
+
+.main.hide-boxes {
+
+    .message-preview,
+    .image-preview {
+        border-color: transparent !important;
+        background-color: transparent !important;
+        box-shadow: none !important;
+        cursor: default !important;
+        pointer-events: none; // Verhindert versehentliches Verschieben im Vorschau-Modus
+    }
+
+    .resize-handle,
+    .box-actions,
+    .snap-guide {
+        display: none !important;
+    }
+}
+
+// Gemeinsamer Rahmen
+.message-preview,
+.image-preview {
     border: 1px dashed #9ca3af;
+    cursor: move;
+    user-select: none;
+    touch-action: none;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+// Text-Box Hover: blauer Rahmen + sanfter blauer Hintergrund + leichter Schein
+.message-preview {
+    position: absolute;
     z-index: 10;
+
+    // &.is-active-layer {
+    //     // z-index: 25 !important;
+    // }
+
+    &:hover {
+        border: 2px dashed #1890ff;
+        background-color: rgba(24, 144, 255, 0.08) !important;
+        box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.15);
+    }
+}
+
+
+.message-preview:hover .box-actions,
+.image-preview:hover .box-actions {
+    opacity: 1;
+}
+
+.message-preview .box-actions {
+    zoom: calc(1920 / 1384);
+}
+
+// Bild-Box Hover: blauer Rahmen + blauer Innen-Schein am Rand (färbt weder Foto noch Textbox ein!)
+.image-preview {
+    // z-index: var(--z, 1);
+
+    // &.is-active-layer {
+    //     // z-index: 25 !important; // Kommt beim Bearbeiten nach vorne!
+    // }
+
+    img {
+        pointer-events: none;
+    }
+
+    &:hover {
+        border: 2px dashed #1890ff;
+        box-shadow: inset 0 0 24px rgba(24, 144, 255, 0.35);
+    }
+}
+
+// Unterdrückt den Bild-Rahmen, sobald die Maus direkt auf der Text-Box liegt
+.main:has(.message-preview:hover) .image-preview {
+    border: 1px dashed #9ca3af;
+    box-shadow: none;
 }
 
 .placeholder {
     //   color: #9ca3af;
-    font-style: italic;
-    padding: 0.5rem 0;
+    padding: 0.5rem 3rem;
     //   text-shadow: 0 0 2px rgba(255, 255, 255, 0.1);
 
     // /* Basis-Farbe */
@@ -14,6 +104,9 @@
     // /* Invertiert die Farbe zum Hintergrund */
     // mix-blend-mode: difference;
     // /* Damit es bei der Invertierung besser lesbar bleibt */
+
+    font-size: 1.5rem;
+    font-style: italic;
     font-weight: bold;
 
     text-align: center;
@@ -29,3 +122,266 @@
     color: rgba(0, 0, 0, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.3);
 }
+
+.resize-handle {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #1890ff;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    z-index: 10;
+
+    &.nw {
+        top: -6px;
+        left: -6px;
+        cursor: nwse-resize;
+    }
+
+    &.ne {
+        top: -6px;
+        right: -6px;
+        cursor: nesw-resize;
+    }
+
+    &.sw {
+        bottom: -6px;
+        left: -6px;
+        cursor: nesw-resize;
+    }
+
+    &.se {
+        bottom: -6px;
+        right: -6px;
+        cursor: nwse-resize;
+    }
+
+    // 4 Seitenmitten (als kleine abgerundete Balken wie in PowerPoint)
+    &.n {
+        top: -5px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 22px;
+        height: 8px;
+        border-radius: 4px;
+        cursor: ns-resize;
+    }
+
+    &.s {
+        bottom: -5px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 22px;
+        height: 8px;
+        border-radius: 4px;
+        cursor: ns-resize;
+    }
+
+    &.w {
+        left: -5px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 8px;
+        height: 22px;
+        border-radius: 4px;
+        cursor: ew-resize;
+    }
+
+    &.e {
+        right: -5px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 8px;
+        height: 22px;
+        border-radius: 4px;
+        cursor: ew-resize;
+    }
+}
+
+// Rote/Blaue Hilfslinien beim Einrasten
+.snap-guide {
+    position: absolute;
+    pointer-events: none;
+    z-index: 30;
+
+    &.vertical {
+        top: 0;
+        bottom: 0;
+        left: 50%;
+        width: 1px;
+        border-left: 1px dashed #ff4d4f;
+    }
+
+    &.horizontal {
+        left: 0;
+        right: 0;
+        top: 50%;
+        height: 1px;
+        border-top: 1px dashed #ff4d4f;
+    }
+}
+
+// Schwebende Mini-Toolbar oben über der gestrichelten Box (erscheint beim Hover)
+// .box-actions {
+//     position: absolute;
+//     top: -32px;
+//     right: 4px;
+//     display: flex;
+//     gap: 4px;
+//     opacity: 0;
+//     transition: opacity 0.15s ease;
+//     z-index: 25;
+
+//     // Wenn die Box ganz oben (z.B. im Vollbild) sitzt, Buttons nach innen holen
+//     &.inside-top {
+//         top: 6px;
+//         right: 6px;
+//     }
+
+//     // Gilt immer für alle Buttons in .box-actions (egal ob außen oder innen)
+//     button {
+//         display: inline-flex;
+//         align-items: center;
+//         justify-content: center;
+//         padding: 0;
+//         line-height: 1;
+//         font-family: Arial, sans-serif;
+
+//         background: #1890ff;
+//         color: #fff;
+//         border: none;
+//         border-radius: 3px;
+//         font-size: 18px;
+//         cursor: pointer;
+//         min-width: 30px;
+//         height: 30px;
+
+//         &:hover {
+//             background: #40a9ff;
+//         }
+//     }
+// }
+.box-actions {
+    position: absolute;
+    top: -38px;
+    right: 4px;
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    width: max-content;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    z-index: 25;
+
+    &.inside-top {
+        top: 6px;
+        right: 6px;
+    }
+
+    // Wenn die Box schmal ist und weit links steht -> Toolbar linksbündig nach rechts aufklappen!
+    &.align-left {
+        left: 4px;
+        right: auto;
+    }
+
+    &.inside-top.align-left {
+        top: 6px;
+        left: 6px;
+        right: auto;
+    }
+    button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        line-height: 1;
+        font-family: Arial, sans-serif;
+
+        background: #1890ff;
+        color: #fff;
+        border: none;
+        border-radius: 3px;
+        font-size: 18px;
+        cursor: pointer;
+        min-width: 30px;
+        height: 30px;
+        flex-shrink: 0;
+
+        &:hover {
+            background: #40a9ff;
+        }
+    }
+
+    // Gleiches blaues 30px-Kästchen-Design wie die Buttons daneben!
+    .opacity-control {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 30px;
+        padding: 0 8px;
+        margin: 0;
+        background: #1890ff;
+        color: #fff;
+        border-radius: 3px;
+        font-family: Arial, sans-serif;
+        font-size: 13px;
+        white-space: nowrap;
+        flex-shrink: 0;
+        user-select: none;
+        cursor: pointer;
+
+        &:hover {
+            background: #40a9ff;
+        }
+
+        input[type="range"] {
+            position: static !important; // Verhindert, dass globale Rules den Slider über andere Buttons legen
+            width: 68px !important;
+            height: 4px;
+            margin: 0;
+            padding: 0;
+            accent-color: #ffffff;
+            cursor: pointer;
+        }
+
+        .opacity-val {
+            min-width: 34px;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+    }
+}
+
+.box-actions button.btn-delete-box {
+    background: #ff4d4f;
+
+    &:hover {
+        background: #ff7875;
+    }
+}
+
+// .box-actions .opacity-control {
+//   display: inline-flex;
+//   align-items: center;
+//   gap: 4px;
+//   padding: 0 6px;
+//   color: #fff;
+//   font-size: 12px;
+//   user-select: none;
+//   cursor: pointer;
+
+//   input[type="range"] {
+//     width: 68px;
+//     height: 4px;
+//     accent-color: #ffffff;
+//     cursor: pointer;
+//     margin: 0;
+//   }
+
+//   .opacity-val {
+//     min-width: 32px;
+//     text-align: right;
+//     font-variant-numeric: tabular-nums;
+//   }
+// }

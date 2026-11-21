@@ -1,25 +1,121 @@
 @if (configService.viewConfig$ | async; as config) {
+<div #canvasContainer class="main" [class.show-frame]="shouldShowFrame(config)" [class.hide-boxes]="!config.showBoxes"
+  [style.background]="(config.showColor && activeItem?.bgColor) ? activeItem.bgColor : 'none'">
 
-<div class="main"
-    [style.background]="(config.showColor && ($safeNavigationMigration(activeItem?.hintergrund) | isColor)) ? activeItem?.hintergrund : 'none'">
+  <!-- 1. BILD- / PDF-EBENEN -->
+  @if (config.showFile && activeItem) {
+  @if (activeItem.mediaType === 'pdf' && (activeItem.hintergrund | imageUrl); as pdfSrc) {
+  <iframe [src]="pdfSrc | safeUrl" class="fill"></iframe>
+  } @else {
+  @for (img of activeItem.imageBoxes ?? []; track img.id) {
+  @if (img.src | imageUrl; as imgSrc) {
+  <div class="image-wrapper image-preview is-positioned" [class.is-active-layer]="selectedImageId === img.id"
+    [style.left.%]="img.left" [style.top.%]="img.top" [style.width.%]="img.width" [style.height.%]="img.height"
+    [style.z-index]="img.zIndex ?? 1" (pointerdown)="startDrag($event, 'image', img.id)">
 
-    @if (config.showFile && activeItem && !(activeItem.hintergrund | isColor)) {
+    <img [src]="imgSrc" [style.opacity]="img.opacity ?? 1" class="fill" [alt]="`Bild ${img.id}`">
 
-    @if (activeItem.mediaType === 'image') {
-    <img [src]="activeItem.hintergrund | imageUrl" class="fill" [alt]="`News #${activeItem.id}`">
-    }
-    @if (activeItem.mediaType === 'pdf') {
-    <iframe [src]="activeItem.hintergrund | imageUrl | safeUrl" class="fill"></iframe>
-    }
-    }
+    <!-- Mini-Toolbar für dieses Bild -->
+    <div class="box-actions" [class.inside-top]="img.top < 5" [class.align-left]="(img.left + img.width) < 38"
+      (pointerdown)="$event.stopPropagation()">
 
-    <!-- Der Text liegt immer drüber -->
-    @if (config.showText && activeItem) {
-    @if(activeItem.text && activeItem.text.trim().length > 0){
-    <div class="message message-preview news-content-output preview-scaled" [innerHTML]="activeItem.text | safeHtml"></div>
-    } @else {
-    <div class="message placeholder">Kein Inhalt vorhanden...</div>
-    }
-    }
+      <button type="button" (click)="centerHorizontally('image', img.id)" title="Bild horizontal zentrieren">↔</button>
+      <button type="button" (click)="centerVertically('image', img.id)" title="Bild vertikal zentrieren">↕</button>
+      <button type="button" (click)="toggleMaximizeBox('image', img.id)"
+        [title]="isBoxMaximized('image', img.id) ? 'Vorherige Größe' : 'Vollbild (100%)'">
+        {{ isBoxMaximized('image', img.id) ? '🗗' : '⛶' }}
+      </button>
+
+      <!-- Ebenen-Steuerung (Vor / Zurück) -->
+      <button type="button" (click)="changeImageZIndex(img.id, 1)" title="Ebene nach vorne">▲</button>
+      <button type="button" (click)="changeImageZIndex(img.id, -1)" title="Ebene nach hinten">▼</button>
+
+      <!-- Kompakter Deckkraft-Slider (10% - 100%) -->
+      <div class="opacity-control" title="Bild-Deckkraft (Transparenz)">
+        <span>◐</span>
+        <input type="range" min="0.1" max="1" step="0.05" [value]="img.opacity ?? 1"
+          (input)="onImageOpacityChange(img.id, $event)">
+        <span class="opacity-val">{{ ((img.opacity ?? 1) * 100) | number:'1.0-0' }}%</span>
+      </div>
+
+      <button type="button" (click)="resetBox('image', img.id)" title="Deckkraft auf 100% zurücksetzen">↺</button>
+      <button type="button" class="btn-delete-box" (click)="removeImage(img.id)" title="Bild entfernen">✕</button>
+    </div>
+
+    <!-- 8 Resize-Anfasser für dieses Bild -->
+    <span class="resize-handle nw" (pointerdown)="startResize($event, 'nw', 'image', img.id)"></span>
+    <span class="resize-handle ne" (pointerdown)="startResize($event, 'ne', 'image', img.id)"></span>
+    <span class="resize-handle sw" (pointerdown)="startResize($event, 'sw', 'image', img.id)"></span>
+    <span class="resize-handle se" (pointerdown)="startResize($event, 'se', 'image', img.id)"></span>
+    <span class="resize-handle n" (pointerdown)="startResize($event, 'n', 'image', img.id)"></span>
+    <span class="resize-handle s" (pointerdown)="startResize($event, 's', 'image', img.id)"></span>
+    <span class="resize-handle w" (pointerdown)="startResize($event, 'w', 'image', img.id)"></span>
+    <span class="resize-handle e" (pointerdown)="startResize($event, 'e', 'image', img.id)"></span>
+  </div>
+  }
+  }
+  }
+  }
+
+  <!-- 2. TEXT-EBENE -->
+  @if (config.showText && activeItem) {
+  @if (hasTextContent) {
+  <div #messageBox class="message message-preview news-content-output preview-scaled"
+    [class.is-positioned]="!!activeItem.textBox" [class.is-active-layer]="selectedLayer === 'text'"
+    [style.left.%]="activeItem.textBox?.left ?? null" [style.top.%]="activeItem.textBox?.top ?? null"
+    [style.width.%]="activeItem.textBox?.width ?? null" [style.height.%]="activeItem.textBox?.height ?? null"
+    (pointerdown)="startDrag($event, 'text')">
+
+    <div class="text-content" [innerHTML]="activeItem.text | safeHtml"></div>
+
+    <!-- Mini-Buttons für den Text -->
+    <div class="box-actions" [class.inside-top]="(activeItem.textBox?.top ?? 10) < 5"
+      [class.align-left]="((activeItem.textBox?.left ?? 10) + (activeItem.textBox?.width ?? 80)) < 25"
+      (pointerdown)="$event.stopPropagation()">
+
+      <button type="button" (click)="fitBoxToText()" title="Boxgröße an Text anpassen">⊡</button>
+      <button type="button" (click)="centerHorizontally('text')" title="Horizontal zentrieren">↔</button>
+      <button type="button" (click)="centerVertically('text')" title="Vertikal zentrieren">↕</button>
+      <button type="button" (click)="toggleMaximizeBox('text')"
+        [title]="isBoxMaximized('text') ? 'Vorherige Größe' : 'Vollbild (100%)'">
+        {{ isBoxMaximized('text') ? '🗗' : '⛶' }}
+      </button>
+      @if (activeItem.textBox) {
+      <button type="button" (click)="resetBox('text')" title="Auf Standard zurücksetzen">↺</button>
+      }
+      @if ((activeItem.imageBoxes?.length ?? 0) > 0) {
+      <button type="button" (click)="bringToFront('image')" title="Bild in den Vordergrund holen">🖼</button>
+      }
+    </div>
+
+    <!-- 8 Resize-Anfasser für den Text -->
+    <span class="resize-handle nw" (pointerdown)="startResize($event, 'nw', 'text')"></span>
+    <span class="resize-handle ne" (pointerdown)="startResize($event, 'ne', 'text')"></span>
+    <span class="resize-handle sw" (pointerdown)="startResize($event, 'sw', 'text')"></span>
+    <span class="resize-handle se" (pointerdown)="startResize($event, 'se', 'text')"></span>
+    <span class="resize-handle n" (pointerdown)="startResize($event, 'n', 'text')"></span>
+    <span class="resize-handle s" (pointerdown)="startResize($event, 's', 'text')"></span>
+    <span class="resize-handle w" (pointerdown)="startResize($event, 'w', 'text')"></span>
+    <span class="resize-handle e" (pointerdown)="startResize($event, 'e', 'text')"></span>
+  </div>
+  } @else {
+  <div class="placeholder">Kein Inhalt vorhanden...</div>
+  }
+  }
+
+  <!-- 3. HILFSLINIEN (Rote Bühnen-Mitte + bis zu 4 cyanblaue Objekt-Linien) -->
+  @if (snapCenterX) {
+  <div class="snap-guide vertical"></div>
+  }
+  @if (snapCenterY) {
+  <div class="snap-guide horizontal"></div>
+  }
+  @for (lx of snapLinesX; track $index) {
+  <div class="snap-guide object-x" [style.left.%]="lx"></div>
+  }
+  @for (ly of snapLinesY; track $index) {
+  <div class="snap-guide object-y" [style.top.%]="ly"></div>
+  }
+
 </div>
 }

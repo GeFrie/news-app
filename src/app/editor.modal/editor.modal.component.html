@@ -5,7 +5,9 @@
         [colorPresets]="customColorPalette">
     </ngx-editor-menu>
     <ngx-editor class="preview-scaled" [editor]="editor" [ngModel]="editorText" (ngModelChange)="onTextChange($event)"
-        (click)="updateCurrentFontSize()" (keyup)="updateCurrentFontSize()"
+        (contextmenu)="onEditorContextMenu($event, tableContextMenu)"
+        (click)="updateCurrentFontSize(); updateCurrentFontWeight(); updateCurrentBlockType(); updateCurrentFontFamily()"
+        (keyup)="updateCurrentFontSize(); updateCurrentFontWeight(); updateCurrentBlockType(); updateCurrentFontFamily()"
         [placeholder]="'Text hier eingeben...'"></ngx-editor>
 </div>
 
@@ -23,24 +25,43 @@
 <!-- 3. Das Custom-Template für die Schriftgrößen-Änderung -->
 <ng-template #customMenu>
 
-    <div class="NgxEditor__Seperator"></div>
-    <div class="NgxEditor__MenuItem">
-        <button type="button" class="toolbar-btn toolbar-paragraph" [class.editor-menu-active]="isParagraphActive()"
-            (click)="resetToParagraph($event)" [title]="isParagraphActive() ? '' : 'in Absatz umwandeln'">
-            <!-- <nz-icon style="margin-top: 4px;">
-                <svg xmlns="http://w3.org" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
-                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M15 4v16M11 4v16M19 4H9.5a4.5 4.5 0 0 0 0 9H15" />
-                </svg>
-            </nz-icon> -->
-            &#182;
-        </button>
+    <div class="NgxEditor__MenuItem font-family-item">
+        <nz-select style="width: 165px; margin: 0 4px;" nzSize="small" [ngModel]="currentFontFamily"
+            (ngModelChange)="setExactFontFamily($event)" (mousedown)="$event.stopPropagation()"
+            [nzDropdownMatchSelectWidth]="false" title="Schriftart" [style.font-family]="currentFontFamily">
+
+            <!-- Standard-Option ganz oben -->
+            <nz-option nzValue="" nzLabel="Standard"></nz-option>
+
+            <!-- Nicht auswählbare Gruppen-Header mit funktionierender Live-Vorschau -->
+            @for (group of fontFamilyGroups; track group.group) {
+            <nz-option-group [nzLabel]="group.group">
+                @for (ff of group.fonts; track ff.value) {
+                <nz-option nzCustomContent [nzValue]="ff.value" [nzLabel]="ff.label">
+                    <span [style.font-family]="ff.value" style="font-size: 15px;">
+                        {{ ff.label }}
+                    </span>
+                </nz-option>
+                }
+            </nz-option-group>
+            }
+        </nz-select>
     </div>
 
     <div class="NgxEditor__Seperator"></div>
 
-    <div class="NgxEditor__MenuItem">
-        <nz-select style="width: 95px; margin: 0 6px;" nzSize="small" [ngModel]="currentFontSize"
+    <div class="NgxEditor__MenuItem block-type-item" title="Textformat (Absatz / Überschrift)">
+        <nz-select style="width: 125px; margin: 0 4px;" nzSize="small" [ngModel]="currentBlockType"
+            (ngModelChange)="setBlockTypeOption($event)" (mousedown)="$event.stopPropagation()">
+
+            @for (bt of blockTypes; track bt.value) {
+            <nz-option [nzValue]="bt.value" [nzLabel]="bt.label"></nz-option>
+            }
+        </nz-select>
+    </div>
+
+    <div class="NgxEditor__MenuItem font-size-item" title="Schriftgröße">
+        <nz-select style="width: 85px; margin: 0 6px;" nzSize="small" [ngModel]="currentFontSize"
             (ngModelChange)="setExactFontSize($event)" (mousedown)="$event.stopPropagation()">
 
             @for (size of fontSizes; track size) {
@@ -49,27 +70,200 @@
         </nz-select>
     </div>
 
-    <div class="NgxEditor__MenuItem">
+    <div class="NgxEditor__MenuItem font-size-item">
         <!-- Button Vergrößern -->
         <button type="button" class="toolbar-btn" (click)="changeFontSize('increase')" title="Schrift vergrößern">
-            <!-- A⁺ -->
-            &#128474;
+            🗚
         </button>
     </div>
-    <div class="NgxEditor__MenuItem">
+    <div class="NgxEditor__MenuItem font-size-item">
         <!-- Button Verkleinern -->
         <button type="button" class="toolbar-btn" (click)="changeFontSize('decrease')" title="Schrift verkleinern">
-            <!-- A⁻ -->
-            &#128475;
+            🗛
         </button>
     </div>
-    <!-- <div class="NgxEditor__MenuItem">
-        <span class="current-size-display">
-            Größe: <strong>{{ currentFontSize }}</strong>
-        </span>
-    </div> -->
 
+    <div class="NgxEditor__Seperator font-size-sep"></div>
+
+    <div class="NgxEditor__MenuItem font-weight-item" title="Schriftstärke">
+        <nz-select style="width: 110px; margin: 0 4px;" nzSize="small" [ngModel]="currentFontWeight"
+            (ngModelChange)="setExactFontWeight($event)" (mousedown)="$event.stopPropagation()">
+            @for (fw of fontWeights; track fw.value) {
+            <nz-option [nzValue]="fw.value" [nzLabel]="fw.label"></nz-option>
+            }
+        </nz-select>
+    </div>
+
+    <!-- Kompakter Tabellen-Button -->
+    <div class="NgxEditor__MenuItem table-item" title="Tabelle einfügen">
+        <button type="button" class="toolbar-btn" nz-dropdown nzTrigger="click" [(nzVisible)]="tableMenuVisible"
+            [nzDropdownMenu]="tableDropdownMenu" (mousedown)="$event.preventDefault()">
+            <nz-icon nzType="table" nzTheme="outline" />
+        </button>
+    </div>
+
+    <!-- <div class="NgxEditor__Seperator"></div> abschließender Separator ganz rechts -->
 </ng-template>
+
+<!-- Dropdown für Toolbar-Klick (8x8 Raster + Aktionen) -->
+<nz-dropdown-menu #tableDropdownMenu="nzDropdownMenu">
+    <div class="table-picker-dropdown" (mousedown)="$event.preventDefault()">
+        <div class="grid-header">
+            {{ hoverRows > 0 ? hoverRows + ' × ' + hoverCols + ' Tabelle' : 'Tabelle einfügen' }}
+        </div>
+
+        <div class="grid-matrix" (mouseleave)="hoverRows = 0; hoverCols = 0">
+            @for (r of gridSize; track r) {
+            <div class="grid-row">
+                @for (c of gridSize; track c) {
+                <div class="grid-cell" [class.active]="r <= hoverRows && c <= hoverCols"
+                    (mouseenter)="hoverRows = r; hoverCols = c" (click)="insertTable(r, c)">
+                </div>
+                }
+            </div>
+            }
+        </div>
+        <ul nz-menu class="table-actions-menu">
+            <li nz-menu-divider></li>
+            <li nz-menu-item [nzDisabled]="!isInTable" (click)="execTableCmd('rowBefore')">Zeile oberhalb</li>
+            <li nz-menu-item [nzDisabled]="!isInTable" (click)="execTableCmd('rowAfter')">Zeile unterhalb</li>
+            <li nz-menu-item [nzDisabled]="!isInTable" (click)="execTableCmd('delRow')">Zeile löschen</li>
+            <li nz-menu-divider></li>
+            <li nz-menu-item [nzDisabled]="!isInTable" (click)="execTableCmd('colBefore')">Spalte links</li>
+            <li nz-menu-item [nzDisabled]="!isInTable" (click)="execTableCmd('colAfter')">Spalte rechts</li>
+            <li nz-menu-item [nzDisabled]="!isInTable" (click)="execTableCmd('delCol')">Spalte löschen</li>
+            <li nz-menu-divider></li>
+            <li nz-menu-item nzDanger [nzDisabled]="!isInTable" (click)="execTableCmd('delTable')">Tabelle löschen</li>
+        </ul>
+    </div>
+</nz-dropdown-menu>
+
+<!-- Rechtsklick-Kontextmenü direkt auf Tabellen-Zellen -->
+<nz-dropdown-menu #tableContextMenu="nzDropdownMenu">
+    <ul nz-menu (mousedown)="$event.preventDefault()">
+        <li nz-menu-item (click)="execTableCmd('rowBefore')">Zeile oberhalb</li>
+        <li nz-menu-item (click)="execTableCmd('rowAfter')">Zeile unterhalb</li>
+        <li nz-menu-item (click)="execTableCmd('delRow')">Zeile löschen</li>
+        <li nz-menu-divider></li>
+        <li nz-menu-item (click)="execTableCmd('colBefore')">Spalte links</li>
+        <li nz-menu-item (click)="execTableCmd('colAfter')">Spalte rechts</li>
+        <li nz-menu-item (click)="execTableCmd('delCol')">Spalte löschen</li>
+
+        <!-- Untermenü für Tabellenlinien -->
+        <li nz-submenu nzTitle="Tabellenlinien">
+            <ul>
+                <!-- Rahmen-Modus -->
+                <li nz-menu-item (click)="setTableBorder({ borderMode: 'all' })">Alle Linien</li>
+                <li nz-menu-item (click)="setTableBorder({ borderMode: 'outer' })">Nur Außenrahmen</li>
+                <li nz-menu-item (click)="setTableBorder({ borderMode: 'horizontal' })">Nur horizontale Linien</li>
+                <li nz-menu-item (click)="setTableBorder({ borderMode: 'none' })">Ohne Rahmen (Layout)</li>
+                <li nz-menu-divider></li>
+
+                <!-- Linienstil -->
+                <li nz-menu-item (click)="setTableBorder({ borderStyle: 'solid' })">Stil: Durchgezogen</li>
+                <li nz-menu-item (click)="setTableBorder({ borderStyle: 'dashed' })">Stil: Gestrichelt</li>
+                <li nz-menu-item (click)="setTableBorder({ borderStyle: 'dotted' })">Stil: Gepunktet</li>
+                <li nz-menu-divider></li>
+
+                <!-- Linienstärke -->
+                <li nz-menu-item (click)="setTableBorder({ borderWidth: '1px' })">Stärke: Dünn (1 px)</li>
+                <li nz-menu-item (click)="setTableBorder({ borderWidth: '3px' })">Stärke: Mittel (3 px)</li>
+                <li nz-menu-item (click)="setTableBorder({ borderWidth: '5px' })">Stärke: Dick (5 px)</li>
+                <li nz-menu-divider></li>
+
+                <!-- Farben + Freier Farbwähler -->
+                <li nz-menu-item (click)="setTableBorder({ borderColor: 'currentColor' })">Farbe: Wie Text</li>
+                <li nz-menu-item (click)="setTableBorder({ borderColor: '#ffffff' })">Farbe: Weiß</li>
+                <li nz-menu-item (click)="setTableBorder({ borderColor: '#000000' })">Farbe: Schwarz</li>
+                <li nz-menu-item (click)="$event.stopPropagation()">
+                    <label
+                        style="display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; width: 100%;"
+                        (click)="openColorPicker('border', $event)">
+                        <span>Farbe wählen…</span>
+                        <span [style.background]="currentTableBorderColor" [title]="currentTableBorderColor"
+                            style="width: 32px; height: 18px; border-radius: 3px; border: 1px solid #bfbfbf; cursor: pointer; display: inline-block;">
+                        </span>
+                    </label>
+                </li>
+            </ul>
+        </li>
+
+        <!-- <li nz-menu-item (mousedown)="$event.preventDefault()" (click)="$event.stopPropagation()"
+            style="cursor: default;">
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <span style="margin-right: 4px;">Zellfarbe:</span>
+                @for (c of cellColors; track c) {
+                <span (mousedown)="$event.preventDefault(); $event.stopPropagation(); setCellBackgroundColor(c)"
+                    [style.background]="c" [title]="c"
+                    style="width: 18px; height: 18px; border-radius: 3px; border: 1px solid #bfbfbf; cursor: pointer; display: inline-block;">
+                </span>
+                }
+                <button type="button"
+                    (mousedown)="$event.preventDefault(); $event.stopPropagation(); setCellBackgroundColor(null)"
+                    title="Zellfarbe entfernen"
+                    style="width: 20px; height: 20px; line-height: 1; padding: 0; border: 1px solid #d9d9d9; background: #fff; border-radius: 3px; cursor: pointer;">
+                    ✕
+                </button>
+            </div>
+        </li> -->
+        <li nz-menu-item (click)="$event.stopPropagation()">
+            <label
+                style="display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; width: 100%;"
+                (click)="openColorPicker('cell', $event)">
+                <span>Zellfarbe…</span>
+                <span [style.background]="currentCellBgColor" [title]="currentCellBgColor"
+                    style="width: 32px; height: 18px; border-radius: 3px; border: 1px solid #bfbfbf; cursor: pointer; display: inline-block;">
+                </span>
+            </label>
+        </li>
+
+
+        <li nz-menu-divider></li>
+        <li nz-menu-item nzDanger (click)="execTableCmd('delTable')">Tabelle löschen</li>
+    </ul>
+</nz-dropdown-menu>
+
+<!-- <span #borderPickerTrigger="ngxColorPicker" [(colorPicker)]="currentTableBorderColor" [cpPosition]="'bottom'"
+    [cpOKButton]="true" [cpOKButtonText]="'OK'" [cpCancelButton]="true" [cpCancelButtonText]="'Abbrechen'"
+    (colorPickerChange)="setTableBorder({ borderColor: $event }, true)"
+    (colorPickerSelect)="setTableBorder({ borderColor: $event }, false)"
+    style="position: fixed; top: 50%; left: 50%; width: 1px; height: 1px; pointer-events: none;">
+</span> -->
+
+<!-- <span #borderPickerTrigger="ngxColorPicker" [(colorPicker)]="currentTableBorderColor" [cpPosition]="'bottom'"
+    [cpOKButton]="true" [cpOKButtonText]="'OK'" [cpCancelButton]="true" [cpCancelButtonText]="'Abbrechen'"
+    (colorPickerOpen)="isBorderPickerOpen = true" (colorPickerClose)="isBorderPickerOpen = false"
+    (colorPickerChange)="setTableBorder({ borderColor: $event }, true)"
+    (colorPickerSelect)="setTableBorder({ borderColor: $event }, false)" [style.left.px]="pickerPos.x"
+    [style.top.px]="pickerPos.y" style="position: fixed; width: 1px; height: 1px; pointer-events: none;">
+</span> -->
+<span #borderPickerTrigger="ngxColorPicker"
+      [(colorPicker)]="currentPickerColor"
+      [cpPosition]="'bottom'"
+      [cpOKButton]="true"
+      [cpOKButtonText]="'OK'"
+      [cpCancelButton]="true"
+      [cpCancelButtonText]="'Abbrechen'"
+      [cpExtraTemplate]="borderColorExtraTpl"
+      (colorPickerOpen)="isBorderPickerOpen = true"
+      (colorPickerClose)="isBorderPickerOpen = false"
+      (colorPickerChange)="onPickerColorUpdate($event, false)"
+      (colorPickerSelect)="onPickerColorUpdate($event, true)"
+      [style.left.px]="pickerPos.x"
+      [style.top.px]="pickerPos.y"
+      style="position: fixed; width: 1px; height: 1px; pointer-events: none;">
+</span>
+
+<ng-template #borderColorExtraTpl>
+  <div style="padding: 4px 8px 8px; text-align: right;">
+    <button type="button"
+            (click)="resetPickerColor()"
+            style="border: 1px solid #d9d9d9; background: #fff; border-radius: 3px; padding: 2px 8px; font-size: 12px; cursor: pointer;">
+      Farbe entfernen
+    </button>
+  </div>
+</ng-template>
+
 }
 
 @if (type === 'file') {
@@ -77,8 +271,28 @@
     [nzRemove]="handleRemove" nzAccept="image/*,.pdf">
     <p class="ant-upload-drag-icon"><i nz-icon nzType="inbox"></i></p>
     <p class="ant-upload-text">Klicken oder Datei hierher ziehen</p>
-    <p class="ant-upload-hint">maximale Datei-Größe: {{MAX_FILE_SIZE_MB}}MB</p>
+    <p class="ant-upload-hint">
+        <span style="color: #1890ff;">Bilder sollten das Seiten-Verhältnis der Kiosk-Anzeige haben (meist 1920 x
+            1080)</span><br />
+        maximale Datei-Größe: {{MAX_FILE_SIZE_MB}}MB
+    </p>
 </nz-upload>
+
+<!-- Auswahl: Maximalgröße vs. Originalgröße (nur bei Bildern sichtbar) -->
+@if (rawSelectedFile && rawSelectedFile.type.startsWith('image/')) {
+<div style="margin-top: 12px; text-align: center;">
+    <nz-radio-group [(ngModel)]="resizeMode" (ngModelChange)="processSelectedImage()">
+        <!-- <label nz-radio-button nzValue="max" [nzDisabled]="!isOversizedImage">Maximalgröße (1920 × 1080)</label> -->
+        <label nz-radio-button nzValue="max">Maximalgröße (1920 × 1080)</label>
+        <label nz-radio-button nzValue="original">Originalgröße</label>
+    </nz-radio-group>
+    @if (imageDimensionsInfo) {
+    <div style="margin-top: 6px; font-size: 12px; color: #8c8c8c;">
+        {{ imageDimensionsInfo }}
+    </div>
+    }
+</div>
+}
 
 @if (previewUrl) {
 <div style="margin-top: 15px; text-align: center;">
@@ -232,9 +446,11 @@
 
 <div nz-row [nzGutter]="[12, 64]" nzAlign="middle"
     [style.marginBottom.px]="(period.includes('week') || period.startsWith('month') || period.startsWith('defined')) ? 16 : 0">
+
     <div nz-col class="gutter-row" [nzSpan]="7">
         <div style="text-align: end;">Wiederholung:</div>
     </div>
+
     <div nz-col class="gutter-row" [nzSpan]="9">
         <nz-select [(ngModel)]="period" (ngModelChange)="setInterval($event)" style="width: 90%">
             @for (option of intervalOptions; track option.value) {
@@ -243,12 +459,15 @@
             }
         </nz-select>
     </div>
-    <!-- <div nz-col class="gutter-row" [nzSpan]="8">
-            <label [style.marginRight.px]="16">Anzeige-Status:</label>
-            <nz-switch [(ngModel)]="isActive" (ngModelChange)="disableOkBtn(false)" nzCheckedChildren="Aktiv"
-                nzUnCheckedChildren="Inaktiv">
-            </nz-switch>
-        </div> -->
+
+    @if(warnStr){
+    <div nz-col class="gutter-row" [nzSpan]="8">
+        <div [style.marginRight.px]="16" [style.marginLeft.px]="-24">
+            <nz-icon nzType="warning" nzTheme="twotone" nzTwotoneColor="#ff8800" />
+            <span style="margin-left: 6px;">{{ warnStr }} sichtbar</span>
+        </div>
+    </div>
+    }
 </div>
 
 @if(period.includes('week') || period.startsWith('month') || period.startsWith('defined')){

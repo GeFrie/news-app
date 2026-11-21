@@ -1,5 +1,6 @@
 {
     "displayDurationSeconds": 6,
     "showColorNameInToolbar": true,
-    "defaultFontSize": "36px"
+    "defaultFontSize": "36px",
+    "fontSizeInfo":"dieser Wert ist als fallBack hinterlegt in style.css, editor.modal.component.css"
 }

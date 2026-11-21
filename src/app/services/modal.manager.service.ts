@@ -27,8 +27,9 @@ export class ModalManagerService {
       type === 'file' ? 'Datei auswählen' : type === 'color' ? 'Farbe wählen' : 'Zeit-Planung';
 
     const modalRef = this.modal.create({
-      nzTitle: title,
+      nzTitle: `${title} für ${currentItem.id === 0 ? 'neue' : ''} News ${currentItem.id === 0 ? '' : '#'}${currentItem.id === 0 ? '' : currentItem.id} `,
       nzContent: EditorModalComponent,
+      nzKeyboard: false,
       nzData: { type, currentItem, plans },
       nzOkText: 'Übernehmen',
       nzWidth: type === 'text' ? 1400 : type === 'color' ? 570 : 700,
@@ -56,11 +57,23 @@ export class ModalManagerService {
         if (type === 'text') {
           this.itemService.updateText(result);
         }
+        // if (type === 'file') {
+        //   const file = result.file;
+        //   const previewUrl = result.previewUrl || URL.createObjectURL(file);
+        //   const mediaType = file.type === 'application/pdf' ? 'pdf' : 'image';
+        //   this.itemService.updateBackground(previewUrl, mediaType, file);
+        // }
         if (type === 'file') {
           const file = result.file;
           const previewUrl = result.previewUrl || URL.createObjectURL(file);
           const mediaType = file.type === 'application/pdf' ? 'pdf' : 'image';
-          this.itemService.updateBackground(previewUrl, mediaType, file);
+
+          if (mediaType === 'pdf') {
+            this.itemService.updateBackground(previewUrl, mediaType, file);
+          } else {
+            // Fügt das Bild proportional an imageBoxes an, ohne bestehende Bilder zu überschreiben!
+            this.itemService.addImageBox(file, previewUrl, result.dimensions);
+          }
         }
         if (type === 'color') {
           this.itemService.updateColor(result);

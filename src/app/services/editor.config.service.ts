@@ -12,7 +12,8 @@ export class EditorConfigService {
   private viewConfig = new BehaviorSubject<EditorConfig>({
     showText: true,
     showFile: true,
-    showColor: true
+    showColor: true,
+    showBoxes: true,
   });
   viewConfig$ = this.viewConfig.asObservable();
 

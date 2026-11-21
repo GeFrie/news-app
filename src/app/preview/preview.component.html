@@ -1,35 +1,45 @@
 <div class="stage-wrapper">
   @if (currentItem && currentItem.id > 0) {
-    
-    <!-- Durch @for mit track item.id erzeugt Angular beim Wechsel ein echtes Enter & Leave -->
-    @for (item of [currentItem]; track item.id) {
-      <div class="main display-container slide-layer"
-           animate.enter="fade-in"
-           animate.leave="fade-out"
-           [style.background]="(item.hintergrund | isColor) ? item.hintergrund : 'gray'">
-        
-        @if (!(item.hintergrund | isColor)) {
-          @if (item.mediaType === 'image') {
-            <img [src]="item.hintergrund | imageUrl" class="preview-image-css" decoding="async"
-                 [alt]="'News #' + item.id">
-          }
-          @if (item.mediaType === 'pdf') {
-            <iframe [src]="item.hintergrund | imageUrl | safeUrl" class="fill"></iframe>
-          }
-        }
-        
-        @if (item.text && item.text.trim().length > 0) {
-          <div class="message news-content-output preview-scaled" [innerHTML]="item.text | safeHtml"></div>
-        }
-      </div>
+
+  @for (item of [currentItem]; track item.id) {
+  <!-- <div class="main display-container slide-layer" -->
+  <div class="display-container slide-layer" animate.enter="fade-in" animate.leave="fade-out"
+    [style.background]="item.bgColor || '#fff'">
+    <!-- [style.background]="(item.hintergrund | isColor) ? item.hintergrund : 'transparent'"> -->
+
+    @if (item.mediaType === 'pdf' && (item.hintergrund | imageUrl); as pdfSrc) {
+    <iframe [src]="pdfSrc | safeUrl" class="fill"></iframe>
+    } @else {
+    @for (img of item.imageBoxes ?? []; track img.id) {
+    @if (img.src | imageUrl; as imgSrc) {
+    <div class="image-wrapper is-positioned" [style.left.%]="img.left" [style.top.%]="img.top"
+      [style.width.%]="img.width" [style.height.%]="img.height" [style.opacity]="img.opacity ?? 1"
+      [style.z-index]="img.zIndex ?? 1">
+      <img [src]="imgSrc" class="fill" [alt]="`Bild ${img.id}`" decoding="async">
+    </div>
+    }
+    }
     }
 
-  } @else if (!loading) {
-    <div class="no-items">
-      <p>
-        <img [src]="'assets/images/logo_schrift.png'" width="70%">
-      </p>
-      <p>Hier gibt es gerade nichts zu sehen.</p>
+
+    <!-- @if (item.text && item.text.trim().length > 0) { -->
+     @if (item.text && (item.text.replace(/<[^>]*>/g, '').trim().length > 0 || item.text.includes('<table') || item.text.includes('<hr'))) {
+
+    <div class="message news-content-output preview-scaled" [class.is-positioned]="!!item.textBox"
+      [style.left.%]="item.textBox?.left ?? null" [style.top.%]="item.textBox?.top ?? null"
+      [style.width.%]="item.textBox?.width ?? null" [style.height.%]="item.textBox?.height ?? null"
+      [innerHTML]="item.text | safeHtml">
     </div>
+    }
+  </div>
+  }
+
+  } @else if (!loading) {
+  <div class="no-items">
+    <p>
+      <img [src]="'assets/images/logo_schrift.png'" width="70%">
+    </p>
+    <p>Hier gibt es gerade nichts zu sehen.</p>
+  </div>
   }
 </div>

@@ -4,13 +4,12 @@ import { ItemService } from '../services/item.service';
 import { SortService } from '../services/sort.service';
 import { Item } from '../interfaces/item';
 import { AsyncPipe } from '@angular/common';
-import { IsColorPipe } from '../pipes/is-color.pipe'
 import { ImageUrlPipe } from '../pipes/image-url.pipe'
 import { SafeHtmlPipe } from '../pipes/safe-html.pipe'
 import { SafeUrlPipe } from '../pipes/safe-url.pipe';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { Subscription } from 'rxjs/internal/Subscription';
-import { Observable, take, withLatestFrom } from 'rxjs';
+import { withLatestFrom } from 'rxjs';
 import { SaveState, SaveStateService } from '../services/save.state.service';
 
 @Component({
@@ -19,7 +18,6 @@ import { SaveState, SaveStateService } from '../services/save.state.service';
   imports: [
     DragDropModule,
     AsyncPipe,
-    IsColorPipe,
     ImageUrlPipe,
     SafeHtmlPipe,
     SafeUrlPipe,

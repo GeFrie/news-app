@@ -1,19 +1,18 @@
 .box {
-    align-items: center;
-    border: 1px solid black;
-    background-color: green;
-    display: flex;
-    height: 100%;
-    justify-content: center;
+  align-items: center;
+  border: 1px solid black;
+  background-color: green;
+  display: flex;
+  height: 100%;
+  justify-content: center;
 }
 
 .display-container {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    // background: #000;
-    transition: background 0.8s ease-in-out, background-color 0.8s ease-in-out;
-    will-change: background-color;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  // background: #000;
+  transition: background 0.8s ease-in-out, background-color 0.8s ease-in-out;
 }
 
 .stage-wrapper {
@@ -29,6 +28,9 @@
   inset: 0;
   width: 100%;
   height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Einblend-Animation (Enter) - 1 Sekunde */
@@ -47,6 +49,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -56,37 +59,38 @@
   from {
     opacity: 1;
   }
+
   to {
     opacity: 0;
   }
 }
 
-.preview-image-css {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  z-index: 1;
-}
+// .preview-image-css {
+//   position: absolute;
+//   top: 0;
+//   left: 0;
+//   width: 100%;
+//   height: 100%;
+//   object-fit: cover;
+//   z-index: 1;
+// }
 
 .no-items {
-    background-color: green;
-    color: white;
-    font-size: 4em;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
+  background-color: green;
+  color: white;
+  font-size: 4em;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .no-items p {
-    margin: 200px 0 0 0;
+  margin: 200px 0 0 0;
 }
 
 .no-items p:first-child {
-    margin-top: 0px;
+  margin-top: 0px;
 }

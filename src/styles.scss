@@ -18,16 +18,6 @@
 $primary-color: #1890ff;
 $danger-color: #ff4d4f;
 
-.main {
-  align-items: center;
-  aspect-ratio: 16 / 9;
-  background-color: transparent;
-  display: flex;
-  justify-content: center;
-  position: relative !important;
-  overflow: hidden;
-}
-
 .message {
   display: block;
   overflow-wrap: break-word;
@@ -39,6 +29,33 @@ $danger-color: #ff4d4f;
   min-height: 3rem;
   width: 75%;
   z-index: 10;
+  box-sizing: border-box;
+}
+
+/* Greift global in Preview, Right-Sider & Frontend, sobald textBox gesetzt ist */
+.message.is-positioned {
+  position: absolute;
+  margin: 0;
+}
+
+.image-wrapper {
+  position: absolute;
+  inset: 0;
+  /* Standard: füllt wie bisher den gesamten Container (0,0 bis 100%,100%) */
+  z-index: 1;
+  box-sizing: border-box;
+}
+
+.image-wrapper.is-positioned {
+  inset: auto;
+  /* Hebt inset: 0 auf, damit left/top/width/height % greifen */
+}
+
+.image-wrapper img.fill {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .preview-scaled {
@@ -50,44 +67,32 @@ $danger-color: #ff4d4f;
 }
 
 .thumbnail {
-  align-items: center;
   aspect-ratio: 16 / 9;
   border: 1px solid #ccc;
   border-radius: 4px;
   margin: 16px 8px;
-  display: flex;
-  justify-content: center;
   position: relative !important;
-  width: calc(100% - 16px);
+  overflow: hidden;
+  width: 199px;
 }
 
-/* Der Text-Container */
-// .thumbnail .message {
-//   cursor: default;
-//   position: absolute;
-//   top: 50%;
-//   left: 50%;
-//   /* feste "virtuelle" Breite für Container, 
-//        die durch Scale passend auf das Thumbnail geschrumpft wird */
-//   width: 1000px;
-//   /* Zentrierung des skalierten Containers */
-//   transform: translate(-50%, -50%) scale(.135);
-//   transform-origin: center center;
-//   /* Zurück zu Block, damit P-Tags umbrechen */
-//   display: block;
-//   text-align: left;
-// }
+.thumbnail-stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 1080px;
+  transform: scale(calc(199 / 1920)); // <-- Exakt derselbe Wert wie width oben!
+  transform-origin: top left;
+  pointer-events: none;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .thumbnail .message {
   cursor: default;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 1440px;
-  transform: translate(-50%, -50%) scale(0.155); //scale(0.111);
-  transform-origin: center center;
-  display: block;
-  text-align: center;
-  text-align: left; //* <-- Standardmäßig linksbündig, HTML-Styles überschreiben dies bei Bedarf */
 }
 
 /* Der aktive Zustand */
@@ -128,8 +133,6 @@ $danger-color: #ff4d4f;
   width: 100%;
   /* Wichtig für Bilder: Füllt den Raum ohne Verzerrung */
   object-fit: cover;
-  /* Optimiert das Rendering für die GPU */
-  will-change: transform, opacity;
   z-index: 1;
 }
 
@@ -157,16 +160,6 @@ $danger-color: #ff4d4f;
   z-index: 1000;
 }
 
-// .cdk-drag-preview .message {
-//   position: absolute;
-//   top: 50%;
-//   left: 50%;
-//   width: 1000px;
-//   transform: translate(-50%, -50%) scale(0.135) !important;
-//   transform-origin: center center;
-//   text-align: left;
-//   pointer-events: none;
-// }
 .cdk-drag-preview .message {
   position: absolute;
   top: 50%;
@@ -231,36 +224,263 @@ $danger-color: #ff4d4f;
 
 /* Container für die Anzeige im Frontend und in der Vorschau */
 .news-content-output {
-  /* Nutzt die Variable, falls gesetzt, andernfalls greift der Fallback (24px) */
-  font-size: var(--default-font-size);
-  // line-height: 1.5;
+  /* Nutzt die Variable, falls gesetzt, andernfalls greift der Fallback (36px steht in config.json) */
+  font-size: var(--default-font-size, 36px);
+  line-height: 1.4; // Exakt wie ProseMirror / NgxEditor 
+
+  p {
+    margin: 0 0 0.5em 0;
+    min-height: 1em; // Wichtig: Sorgt dafür, dass leere Zeilen (<p></p>) genau wie im NgxEditor ihre Höhe behalten!
+  }
+
+  p:last-child {
+    margin-bottom: 0;
+  }
 }
 
 /* Automatische, proportionale Skalierung aller Überschriften */
-.news-content-output h1 {
-  font-size: calc(var(--default-font-size) / 16 * 32);
+.news-content-output h1,
+.ProseMirror h1 {
+  font-size: calc(var(--default-font-size, 36px) / 16 * 32);
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0 0 0.35em 0;
 }
 
-/* 48px */
-.news-content-output h2 {
-  font-size: calc(var(--default-font-size) / 16 * 24);
+.news-content-output h2,
+.ProseMirror h2 {
+  font-size: calc(var(--default-font-size, 36px) / 16 * 24);
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 0 0 0.35em 0;
 }
 
-/* 36px */
-.news-content-output h3 {
-  font-size: calc(var(--default-font-size) / 16 * 19);
+.news-content-output h3,
+.ProseMirror h3 {
+  font-size: calc(var(--default-font-size, 36px) / 16 * 19);
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 0 0 0.3em 0;
 }
 
-/* 28.5px */
-.news-content-output h4 {
-  font-size: calc(var(--default-font-size) / 16 * 16);
+.news-content-output h4,
+.ProseMirror h4 {
+  font-size: calc(var(--default-font-size, 36px) / 16 * 16);
+  font-weight: 600;
+  line-height: 1.35;
+  margin: 0 0 0.25em 0;
 }
 
-/* 24px */
+/* =========================================================
+   TABELLEN-STYLING (Im NgxEditor & auf allen News-Ansichten)
+   ========================================================= */
+.news-content-output table,
+.ProseMirror table {
+  border-collapse: collapse;
+  margin-top: 0.4em;
+  margin-bottom: 0.4em;
+  table-layout: fixed;
+  overflow: hidden;
+  box-sizing: border-box;
 
-.btn-highlight {
-  background: rgba(24, 144, 255, 0.1) !important;
-  color: rgba(0, 0, 0, 0.85) !important;
-  border: 1px solid rgb(24, 144, 255) !important;
-  width: 100%;
+  :where(td, th) {
+    text-align: left; // Spezifität 0 -> jede manuelle Ausrichtung (center/right) gewinnt sofort!
+  }
+
+  td,
+  th {
+    border-style: var(--tbl-border-style, solid);
+    border-width: var(--tbl-border-width, 2px);
+    border-color: var(--tbl-border-color, currentColor);
+    padding: 0.35em 0.55em;
+    vertical-align: top;
+    min-width: 1.5em;
+    box-sizing: border-box;
+    position: relative;
+
+    p {
+      margin: 0;
+    }
+  }
+}
+
+/* Modus: Nur Außenrahmen */
+.news-content-output table[data-border-mode="outer"],
+.ProseMirror table[data-border-mode="outer"] {
+  border-style: var(--tbl-border-style, solid);
+  border-width: var(--tbl-border-width, 2px);
+  border-color: var(--tbl-border-color, currentColor);
+
+  td,
+  th {
+    border-color: transparent;
+  }
+}
+
+/* Modus: Nur horizontale Linien (keine vertikalen Spaltenstriche) */
+.news-content-output table[data-border-mode="horizontal"],
+.ProseMirror table[data-border-mode="horizontal"] {
+
+  td,
+  th {
+    border-left-color: transparent;
+    border-right-color: transparent;
+  }
+}
+
+/* Modus: Ohne Rahmen (Kiosk/Vorschau unsichtbar, im NgxEditor dezente Hilfslinie) */
+.news-content-output table[data-border-mode="none"] {
+
+  td,
+  th {
+    border-color: transparent !important;
+  }
+}
+
+.ProseMirror table[data-border-mode="none"],
+.ProseMirror table[data-border-mode="outer"] {
+
+  td,
+  th {
+    border: 1px dashed rgba(128, 128, 128, 0.35);
+  }
+}
+
+/** END Tabellen-Styling */
+
+
+
+/* Im NgxEditor übernimmt die äußere .editor-table-box die Breite & Position */
+.ProseMirror .editor-table-box table {
+  width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Im NgxEditor: Ausgewählte Zellen & Spalten-Resizer hervorheben */
+.ProseMirror {
+  .selectedCell::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(24, 144, 255, 0.2);
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  // .column-resize-handle {
+  //   position: absolute;
+  //   right: -2px;
+  //   top: 0;
+  //   bottom: -2px;
+  //   width: 4px;
+  //   background-color: #1890ff;
+  //   pointer-events: none;
+  // }
+  .column-resize-handle {
+    position: absolute;
+    right: -2px;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    z-index: 20;
+    background-color: #1890ff;
+    pointer-events: none;
+  }
+
+  &.resize-cursor {
+    cursor: col-resize;
+  }
+}
+
+.ProseMirror .editor-table-box {
+  position: relative;
+  margin-top: 12px;
+  margin-bottom: 12px;
+  border: 1px dashed rgba(24, 144, 255, 0.5);
+  transition: border-color 0.15s;
+
+  &:hover,
+  &:focus-within {
+    border-color: #1890ff;
+
+    .table-box-actions,
+    .table-resize-handle {
+      opacity: 1;
+    }
+  }
+
+  .table-box-actions {
+    position: absolute;
+    top: 0px;
+    left: 0;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background: #1890ff;
+    color: #fff;
+    padding: 2px 2px;
+    border-radius: 4px 4px 0 0;
+    font-size: 28px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 10;
+    user-select: none;
+
+    .table-drag-handle {
+      cursor: move;
+      padding: 0 2px;
+      font-size: 32px;
+    }
+
+    button {
+      background: transparent;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      padding: 0 10px;
+      line-height: 1.4;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 2px;
+      }
+    }
+  }
+
+  .table-resize-handle {
+    position: absolute;
+    background: #1890ff;
+    opacity: 0;
+    z-index: 10;
+
+    &.e {
+      top: 50%;
+      right: -5px;
+      width: 8px;
+      height: 24px;
+      transform: translateY(-50%);
+      cursor: ew-resize;
+      border-radius: 4px;
+    }
+
+    &.s {
+      bottom: -5px;
+      left: 50%;
+      width: 24px;
+      height: 8px;
+      transform: translateX(-50%);
+      cursor: ns-resize;
+      border-radius: 4px;
+    }
+
+    &.se {
+      right: -5px;
+      bottom: -5px;
+      width: 10px;
+      height: 9px;
+      cursor: nwse-resize;
+      border-radius: 5px;
+    }
+  }
 }

@@ -133,7 +133,7 @@ export class PlanService {
     return {
       id: id,
       sort: itemCount + 1,
-      period: 'none',
+      period: 'daily', //'none',
       days: createTageRecord(),
       dates: [new Date(), null],
       times: [null, null],

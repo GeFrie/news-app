@@ -1,5 +1,4 @@
 $primary-color: #1890ff;
-$danger-color: #ff4d4f;
 
 nz-sider {
     background: white;
@@ -71,14 +70,26 @@ nz-content {
     width: 156px;
 }
 
-/* Der Zustand "AN" (Green) - ist meist schon grün, hier zur Sicherheit */
-::ng-deep .ant-switch-disabled.ant-switch-checked {
-  background-color: #52c41a !important;
-  opacity: 0.75;
-  cursor: not-allowed !important; 
-}
+// /* Der Zustand "AN" (Green) - ist meist schon grün, hier zur Sicherheit */
+// ::ng-deep .ant-switch-disabled.ant-switch-checked {
+//   background-color: #52c41a !important;
+//   opacity: 0.75;
+//   cursor: not-allowed !important; 
+// }
 
 :host ::ng-deep .bold-number .ant-input-number-input {
-  font-weight: 500;
+  font-weight: 700;
+  font-size: larger;
+//   padding-left: 5px;
+  background-color: $primary-color;
+  color: white;
 }
 
+/* Greift gezielt nur auf den inneren Button zu, das Rechteck bleibt transparent */
+::ng-deep .switch-gruen .ant-switch {
+  background-color: #52c41a;
+}
+
+::ng-deep .switch-rot .ant-switch {
+  background-color: #ff4d4f;
+}

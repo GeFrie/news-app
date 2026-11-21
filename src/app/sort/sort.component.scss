@@ -21,62 +21,57 @@ $danger-color: #ff4d4f;
     transform: translate(-50%, -50%);
     text-align: center;
     color: #ccc;
-    /* Wichtig: Klicks gehen durch auf die Drop-Zone */
     pointer-events: none;
 }
 
 .drop-placeholder [nz-icon] {
-    /* Größe des NG-ZORRO Icons */
     font-size: 48px;
     margin-bottom: 8px;
 }
 
 .item {
-    align-items: center;
-    // aspect-ratio: 16 / 9;
     border: 1px solid #ccc;
     border-radius: 4px;
-    display: flex;
-    justify-content: center;
     position: relative !important;
-    // width: 32.3%; // 433px;
+    overflow: hidden; // <-- Verhindert, dass Inhalte über die abgerundeten Ecken ragen
     width: 431px;
     height: 241px;
-    // flex: 0 0 431px !important;
-    // margin: 8px !important;
-    // box-sizing: border-box;
+    cursor: move;
 }
 
+/* 1920x1080 Bühne, exakt auf die 431px Breite der Sortier-Karte skaliert */
+.sort-stage {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1920px;
+    height: 1080px;
+    transform: scale(calc(431 / 1920));
+    transform-origin: top left;
+    pointer-events: none;
 
-/* Der Text-Container */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .item .message {
-   cursor: default;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 1440px;
-  transform: translate(-50%, -50%) scale(0.31);
-  transform-origin: center center;
-  display: block;
-  text-align: left;
+    cursor: default;
 }
 
 /* Der aktive Zustand */
 .item.selected {
-  border: 2px solid $primary-color; //#1890ff;
-  /* Ant Design Blau */
-  box-shadow: 0 0 10px rgba($primary-color, 0.75);
-  /* Minimales Vergrößern */
-  // transform: scale(1.02);
-  z-index: 10;
+    border: 2px solid $primary-color;
+    box-shadow: 0 0 10px rgba($primary-color, 0.75);
+    z-index: 10;
 }
 
-/* Optional: Hover-Effekt für bessere UX */
+/* Hover-Effekt */
 .item:hover:not(.selected) {
-  border-color: rgba(0, 0, 0, .5);
-  transform: scale(1.007);
+    border-color: rgba(0, 0, 0, .5);
+    transform: scale(1.007);
 }
 
 .item.selected:hover {
-  transform: scale(1.015);
+    transform: scale(1.015);
 }

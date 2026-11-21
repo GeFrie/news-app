@@ -2,18 +2,6 @@
     position: relative;
     aspect-ratio: 16 / 9;
     transition: background 0.8s ease-in-out, background-color 0.8s ease-in-out;
-    will-change: background-color;
-}
-
-// Für das Bild und das PDF-Iframe
-.preview-image-css {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover; // Sorgt dafür, dass das Bild ohne Verzerrung den Raum füllt
-    z-index: 1; // Liegt unter dem Text (.message hat z-index: 10)
 }
 
 .no-items {
@@ -22,7 +10,7 @@
     font-size: 4em;
 
     aspect-ratio: 16 / 9;
-    height: 100&;
+    height: 100%;
 
     display: flex;
     flex-direction: column;
@@ -53,6 +41,9 @@
     inset: 0;
     width: 100%;
     height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Einblend-Animation (Enter) */
